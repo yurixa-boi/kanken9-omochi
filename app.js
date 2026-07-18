@@ -2,10 +2,12 @@
 
 /*
  * おもち先生と学ぶ 漢検9級チャレンジ
- * Ver.2.1.1 Part3-2③
+ * Ver.2.1.2
  *
  * このファイルでは、学習・復習・ガチャなどの既存機能に加えて、
  * 漢字図鑑、ミスノート、手書きプリントを同じ学習記録から動かします。
+ * Ver.2.1.2では、問題文を文脈付きにし、正解位置を毎回分散させ、
+ * 漢検9級（小学校1・2年生配当）の範囲外だった漢字を修正しました。
  *
  * 大切な互換性ルール：
  * LocalStorageのキー「KANJI9_SAVE_V2」は変更しません。
@@ -15,7 +17,9 @@
 
 const STORAGE_KEY = "KANJI9_SAVE_V2";
 const BACKUP_KEY = "KANJI9_BACKUP";
-const COURSE_DAYS = 60;
+/* 現在実装済みのカリキュラムと冒険マップは20日分です。 */
+const COURSE_DAYS = 20;
+const APP_VERSION = "2.1.2";
 
 const FACES = {
   normal: "assets/images/omochi-01-3b54909ac76c.png",
@@ -38,23 +42,39 @@ const CURRICULUM = [
   ["父", "母", "兄", "姉", "弟"],
   ["朝", "昼", "夜", "時", "分"],
   ["友", "話", "聞", "読", "書"],
-  ["食", "飲", "米", "魚", "茶"],
+  ["食", "肉", "米", "魚", "茶"],
   ["歩", "走", "止", "道", "近"],
   ["学", "校", "教", "室", "算"],
   ["春", "南", "母", "夜", "書"],
   ["数", "半", "足", "引", "同"],
-  ["長", "短", "丸", "角", "線"],
-  ["色", "明", "暗", "光", "白"],
+  ["長", "形", "丸", "角", "線"],
+  ["色", "明", "黒", "光", "白"],
   ["鳥", "鳴", "馬", "牛", "羽"],
-  ["花", "葉", "草", "根", "実"],
-  ["町", "店", "駅", "公", "園"],
-  ["仕", "事", "作", "働", "売"],
+  ["花", "木", "草", "林", "森"],
+  ["町", "店", "市", "公", "園"],
+  ["工", "買", "作", "会", "売"],
   ["楽", "元", "強", "弱", "心"],
-  ["立", "座", "開", "閉", "待"],
-  ["計", "短", "明", "鳥", "駅"]
+  ["立", "行", "帰", "来", "休"],
+  ["計", "形", "明", "鳥", "市"]
 ];
 
 const AVAILABLE_DAYS = CURRICULUM.length;
+
+/*
+ * Ver.2.1.1までに漢検9級の範囲外だった漢字を差し替えた問題IDです。
+ * IDをそのまま使っているため、初回移行時だけ旧問題の復習履歴を外します。
+ * それ以外の問題履歴、学習日、星、ガチャなどは一切削除しません。
+ */
+const AUDITED_REPLACED_QUESTION_IDS = new Set([
+  "d7r1", "d7w1",
+  "d12r1", "d12w1",
+  "d13r2", "d13w2",
+  "d15r1", "d15w1", "d15r3", "d15w3", "d15r4", "d15w4",
+  "d16r2", "d16w2",
+  "d17r0", "d17w0", "d17r1", "d17w1", "d17r3", "d17w3",
+  "d19r1", "d19w1", "d19r2", "d19w2", "d19r3", "d19w3", "d19r4", "d19w4",
+  "d20r1", "d20w1", "d20r4", "d20w4"
+]);
 
 /*
  * READINGSは「このアプリの問題で使う読み」です。
@@ -66,20 +86,20 @@ const READINGS = {
   "東": "ひがし", "西": "にし", "南": "みなみ", "北": "きた", "前": "まえ",
   "父": "ちち", "母": "はは", "兄": "あに", "姉": "あね", "弟": "おとうと",
   "朝": "あさ", "昼": "ひる", "夜": "よる", "時": "とき", "分": "ふん",
-  "友": "とも", "話": "はなす", "聞": "きく", "読": "よむ", "書": "かく",
-  "食": "たべる", "飲": "のむ", "米": "こめ", "魚": "さかな", "茶": "ちゃ",
+  "友": "とも", "話": "はなし", "聞": "きく", "読": "よむ", "書": "かく",
+  "食": "たべる", "肉": "にく", "米": "こめ", "魚": "さかな", "茶": "ちゃ",
   "歩": "あるく", "走": "はしる", "止": "とまる", "道": "みち", "近": "ちかい",
-  "学": "がく", "校": "こう", "教": "おしえる", "室": "しつ", "算": "さん",
+  "学": "まなぶ", "校": "こう", "教": "おしえる", "室": "しつ", "算": "さん",
   "数": "かず", "半": "はん", "足": "たす", "引": "ひく", "同": "おなじ",
-  "長": "ながい", "短": "みじかい", "丸": "まる", "角": "かど", "線": "せん",
-  "色": "いろ", "明": "あかるい", "暗": "くらい", "光": "ひかり", "白": "しろ",
+  "長": "ながい", "形": "かたち", "丸": "まる", "角": "かど", "線": "せん",
+  "色": "いろ", "明": "あかるい", "黒": "くろ", "光": "ひかり", "白": "しろ",
   "鳥": "とり", "鳴": "なく", "馬": "うま", "牛": "うし", "羽": "はね",
-  "花": "はな", "葉": "は", "草": "くさ", "根": "ね", "実": "み",
-  "町": "まち", "店": "みせ", "駅": "えき", "公": "こう", "園": "えん",
-  "仕": "し", "事": "ごと", "作": "つくる", "働": "はたらく", "売": "うる",
+  "花": "はな", "木": "き", "草": "くさ", "林": "はやし", "森": "もり",
+  "町": "まち", "店": "みせ", "市": "し", "公": "こう", "園": "えん",
+  "工": "こう", "買": "かう", "作": "つくる", "会": "あう", "売": "うる",
   "楽": "たのしい", "元": "げん", "強": "つよい", "弱": "よわい", "心": "こころ",
-  "立": "たつ", "座": "すわる", "開": "あける", "閉": "しめる", "待": "まつ",
-  "計": "けい"
+  "立": "たつ", "行": "いく", "帰": "かえる", "来": "くる", "休": "やすむ",
+  "計": "はかる"
 };
 
 /* 図鑑カードとプリントに表示する、短く読みやすい例文です。 */
@@ -90,18 +110,18 @@ const EXAMPLES = {
   "父": "父と出かける。", "母": "母と料理をする。", "兄": "兄と話す。", "姉": "姉と本を読む。", "弟": "弟とあそぶ。",
   "朝": "朝早くおきる。", "昼": "昼ごはんを食べる。", "夜": "夜は星が見える。", "時": "出発する時を決める。", "分": "五分だけ休む。",
   "友": "友だちと学ぶ。", "話": "先生の話を聞く。", "聞": "音をよく聞く。", "読": "本を声に出して読む。", "書": "ノートに字を書く。",
-  "食": "ごはんを食べる。", "飲": "水を飲む。", "米": "米をとぐ。", "魚": "魚が川をおよぐ。", "茶": "あたたかいお茶を飲む。",
+  "食": "ごはんを食べる。", "肉": "肉を食べる。", "米": "米をとぐ。", "魚": "魚が川をおよぐ。", "茶": "あたたかいお茶をのむ。",
   "歩": "道を歩く。", "走": "校庭を走る。", "止": "赤信号で止まる。", "道": "学校までの道。", "近": "家の近くの公園。",
   "学": "漢字を学ぶ。", "校": "学校へ行く。", "教": "先生が教える。", "室": "教室に入る。", "算": "算数の問題をとく。",
   "数": "星の数をかぞえる。", "半": "半分にわける。", "足": "二と三を足す。", "引": "五から二を引く。", "同": "同じ色をえらぶ。",
-  "長": "長いひもをむすぶ。", "短": "短いえんぴつ。", "丸": "紙に丸をかく。", "角": "紙の角をそろえる。", "線": "まっすぐな線を引く。",
-  "色": "好きな色をぬる。", "明": "明るいへや。", "暗": "外が暗くなる。", "光": "朝の光がさす。", "白": "白い雲がうかぶ。",
+  "長": "長いひもをむすぶ。", "形": "丸い形をかく。", "丸": "紙に丸をかく。", "角": "紙の角をそろえる。", "線": "まっすぐな線を引く。",
+  "色": "好きな色をぬる。", "明": "明るいへや。", "黒": "黒い紙に書く。", "光": "朝の光がさす。", "白": "白い雲がうかぶ。",
   "鳥": "鳥が空をとぶ。", "鳴": "鳥が鳴く。", "馬": "馬が草原を走る。", "牛": "牛が草を食べる。", "羽": "鳥の羽を見つける。",
-  "花": "赤い花がさく。", "葉": "木の葉がゆれる。", "草": "草の上にすわる。", "根": "木の根がのびる。", "実": "木に実がなる。",
-  "町": "にぎやかな町を歩く。", "店": "店でパンを買う。", "駅": "駅で電車を待つ。", "公": "公園であそぶ。", "園": "公園に花がさく。",
-  "仕": "仕事のじゅんびをする。", "事": "大切な事をメモする。", "作": "紙で花を作る。", "働": "元気に働く。", "売": "店で野菜を売る。",
+  "花": "赤い花がさく。", "木": "木の下で休む。", "草": "草の上にすわる。", "林": "林の中を歩く。", "森": "森で鳥の声を聞く。",
+  "町": "にぎやかな町を歩く。", "店": "店でパンを買う。", "市": "市でおまつりがある。", "公": "公園であそぶ。", "園": "公園に花がさく。",
+  "工": "工場で車を作る。", "買": "店で本を買う。", "作": "紙で花を作る。", "会": "友だちに会う。", "売": "店で野菜を売る。",
   "楽": "楽しくべんきょうする。", "元": "元気にあいさつする。", "強": "強い風がふく。", "弱": "弱い力でおす。", "心": "やさしい心をもつ。",
-  "立": "いすから立つ。", "座": "いすに座る。", "開": "まどを開ける。", "閉": "ドアを閉める。", "待": "友だちを待つ。", "計": "時間を計る。"
+  "立": "いすから立つ。", "行": "学校へ行く。", "帰": "家に帰る。", "来": "友だちが来る。", "休": "学校を休む。", "計": "時間を計る。"
 };
 
 const AREA_BG = {
@@ -168,7 +188,7 @@ const KANJI_CATALOG = (() => {
 /* 新しくゲームを始めるときの初期データです。 */
 function defaults() {
   return {
-    version: "2.1.1",
+    version: APP_VERSION,
     profile: { name: "" },
     progress: {
       currentDay: 1,
@@ -274,6 +294,7 @@ function getLevelProgress(totalExp = data.player.totalExp || 0) {
 /* 問題から、その問題で学習している漢字を取り出します。 */
 function questionKanji(question) {
   if (!question) return "";
+  if (question.kanji) return question.kanji;
   if (question.type === "読み") return question.main;
   return question.choices && question.choices[question.answer]
     ? question.choices[question.answer]
@@ -285,7 +306,22 @@ function questionKanji(question) {
  * 変換済みの漢字には加算しないため、起動するたびに数字が増えることはありません。
  */
 function migrateData() {
-  data.version = "2.1.1";
+  const needsQuestionAuditMigration = data.version !== APP_VERSION;
+
+  /*
+   * 差し替え前の問題を苦手問題として出さないよう、該当IDだけを整理します。
+   * 旧問題と新問題は同じIDなので、ここを残すと別の漢字へ誤って履歴が
+   * 引き継がれる可能性があります。
+   */
+  if (needsQuestionAuditMigration) {
+    AUDITED_REPLACED_QUESTION_IDS.forEach(questionId => {
+      delete data.review.history[questionId];
+    });
+    data.review.queue = (data.review.queue || []).filter(item => !AUDITED_REPLACED_QUESTION_IDS.has(item.id));
+    data.review.weakIds = (data.review.weakIds || []).filter(questionId => !AUDITED_REPLACED_QUESTION_IDS.has(questionId));
+  }
+
+  data.version = APP_VERSION;
   data.player = data.player || { totalExp: 0, equippedItemId: "" };
   data.kanji = data.kanji || { stats: {}, printSelection: [] };
   data.kanji.stats = data.kanji.stats || {};
@@ -376,7 +412,11 @@ function hash(pinValue) {
   return (result >>> 0).toString(16);
 }
 
-/* 1日分の10問を作ります。 */
+/*
+ * 1日分の10問を作ります。
+ * 読みが複数ある漢字を単独で表示すると正解を決められないことがあるため、
+ * 読み問題も書き問題も、必ず短い例文の中で出題します。
+ */
 function generateQuestions(day) {
   const characters = CURRICULUM[day - 1] || CURRICULUM[0];
   const questions = [];
@@ -384,6 +424,7 @@ function generateQuestions(day) {
   for (let index = 0; index < 5; index += 1) {
     const character = characters[index];
     const reading = READINGS[character] || character;
+    const example = EXAMPLES[character] || `${character}をつかった文。`;
     const otherReadings = characters
       .filter(item => item !== character)
       .map(item => READINGS[item] || item)
@@ -393,32 +434,69 @@ function generateQuestions(day) {
       id: `d${day}r${index}`,
       day,
       type: "読み",
-      prompt: `【${character}】の読みを選ぼう`,
-      main: character,
+      kanji: character,
+      prompt: `文の中の【${character}】の読みを選ぼう`,
+      main: example,
       choices: [reading, ...otherReadings],
       answer: 0,
-      explain: `${character}は「${reading}」と読みます。`
+      explain: `この文の【${character}】は「${reading}」と読みます。`
     });
   }
 
   for (let index = 0; index < 5; index += 1) {
     const character = characters[index];
     const reading = READINGS[character] || character;
+    const example = EXAMPLES[character] || `${character}をつかった文。`;
     const otherCharacters = characters.filter(item => item !== character).slice(0, 2);
 
     questions.push({
       id: `d${day}w${index}`,
       day,
       type: index === 4 ? "まとめ" : "書き",
-      prompt: `「${reading}」に合う漢字を選ぼう`,
-      main: reading,
+      kanji: character,
+      prompt: `「${reading}」と読む、□に入る漢字を選ぼう`,
+      main: example.replace(character, "□"),
       choices: [character, ...otherCharacters],
       answer: 0,
-      explain: `「${reading}」は${character}と書きます。`
+      explain: `□には「${character}」が入ります。`
     });
   }
 
   return questions;
+}
+
+/* 配列を直接書き換えず、ランダムな順番の複製を返します。 */
+function shuffledCopy(values) {
+  const result = values.slice();
+  for (let index = result.length - 1; index > 0; index -= 1) {
+    const swapIndex = Math.floor(Math.random() * (index + 1));
+    [result[index], result[swapIndex]] = [result[swapIndex], result[index]];
+  }
+  return result;
+}
+
+/*
+ * 選択肢の正解位置を学習開始ごとに組み替えます。
+ * 上・中央・下がほぼ同じ回数になる位置リストを先に作り、そのリスト自体を
+ * ランダムに混ぜます。偏りと単純な並び方の両方を避けています。
+ * 不正解の2択も入れ替え、位置だけで答えを覚えにくくしています。
+ */
+function prepareQuestionsForSession(questions) {
+  const answerPositions = shuffledCopy(questions.map((question, index) => index % question.choices.length));
+
+  return questions.map((question, questionIndex) => {
+    const correctChoice = question.choices[question.answer];
+    const incorrectChoices = question.choices.filter((choice, choiceIndex) => choiceIndex !== question.answer);
+    const targetAnswerIndex = answerPositions[questionIndex];
+    const choices = shuffledCopy(incorrectChoices);
+    choices.splice(targetAnswerIndex, 0, correctChoice);
+
+    return {
+      ...question,
+      choices,
+      answer: targetAnswerIndex
+    };
+  });
 }
 
 function getQuestionById(questionId) {
@@ -433,7 +511,7 @@ let session = null;
 
 function startStudy(day, customQuestions) {
   const safeDay = Math.max(1, Math.min(AVAILABLE_DAYS, day || 1));
-  let questions = customQuestions || generateQuestions(safeDay);
+  let questions = customQuestions ? customQuestions.slice() : generateQuestions(safeDay);
 
   /* 通常学習のときだけ、復習期限が来た問題を最大3問追加します。 */
   if (!customQuestions) {
@@ -444,6 +522,9 @@ function startStudy(day, customQuestions) {
       .slice(0, 3);
     questions = questions.concat(reviewQuestions);
   }
+
+  /* 復習問題を追加した後、全問題の正解位置をまとめて分散させます。 */
+  questions = prepareQuestionsForSession(questions);
 
   session = {
     day: safeDay,
@@ -478,6 +559,7 @@ function renderQuestion() {
   $("qtype").textContent = question.type;
   $("qprompt").textContent = question.prompt;
   $("qmain").textContent = question.main;
+  $("qmain").classList.toggle("sentence", question.main.length > 4);
   $("feedback").className = "feedback";
   $("nextBtn").classList.add("hidden");
   $("combo").textContent = session.combo >= 2 ? `🔥 ${session.combo}コンボ！` : "";
@@ -1093,36 +1175,61 @@ function renderPractice() {
 
   const pageCount = Math.max(1, Math.ceil(selection.length / 4));
   $("practicePageHint").textContent = selection.length
-    ? `${selection.length}字を選択中です。印刷は約${pageCount}ページになります。`
+    ? `${selection.length}字を選択中です。印刷は${pageCount}ページです（1ページ4字）。`
     : "漢字を選ぶと、ここに印刷見本が表示されます。";
   $("printBtn").disabled = !selection.length;
 
   const currentDay = Math.max(1, Math.min(AVAILABLE_DAYS, data.progress.currentDay));
-  $("printSubtitle").textContent = `Day ${currentDay}　今日の漢字＋ミスノート`;
-  $("printDate").textContent = displayDate(new Date().toISOString());
+  const printSheet = $("printSheet");
+  const printDate = displayDate(new Date().toISOString());
+  printSheet.innerHTML = "";
 
-  const printList = $("printKanjiList");
-  printList.innerHTML = "";
+  if (!selection.length) {
+    printSheet.innerHTML = "<div class='print-empty'>漢字を選ぶと、ここにA4印刷見本が表示されます。</div>";
+    return;
+  }
 
-  selection.forEach(character => {
-    const item = KANJI_CATALOG.find(card => card.character === character);
-    if (!item) return;
-
-    const accuracy = kanjiAccuracy(character);
-    const block = document.createElement("article");
-    block.className = "print-kanji-block";
-    block.innerHTML = `
-      <div class="print-kanji-heading">
-        <span>${character}</span>
-        <div><b>読み：${item.reading}</b><small>${item.example}</small></div>
-        <em>${accuracy === null ? "これから学習" : `正答率 ${accuracy}%`}</em>
+  /*
+   * 4字ごとに独立したA4ページを作ります。
+   * 見出しと名前欄を各ページへ入れるため、2ページ目以降だけを印刷しても
+   * 何のプリントか分かり、ブラウザーによる途中改ページも起こりにくくなります。
+   */
+  for (let pageIndex = 0; pageIndex < pageCount; pageIndex += 1) {
+    const pageCharacters = selection.slice(pageIndex * 4, pageIndex * 4 + 4);
+    const page = document.createElement("section");
+    page.className = "print-page";
+    page.innerHTML = `
+      <div class="print-title">
+        <div><h1>漢字れんしゅうプリント</h1><p>Day ${currentDay}　今日の漢字＋ミスノート</p></div>
+        <div class="print-meta"><span>日づけ：<b>${printDate}</b></span><span>なまえ：</span></div>
       </div>
-      <div class="writing-row"><b>なぞる</b><div class="writing-box trace">${character}</div><div class="writing-box trace">${character}</div><div class="writing-box trace">${character}</div><div class="writing-box trace">${character}</div></div>
-      <div class="writing-row"><b>見て書く</b><div class="model-kanji">${character}</div><div class="writing-box"></div><div class="writing-box"></div><div class="writing-box"></div><div class="writing-box"></div></div>
-      <div class="writing-row"><b>見ないで</b><div class="writing-box"></div><div class="writing-box"></div><div class="writing-box"></div><div class="writing-box"></div></div>
+      <div class="print-kanji-list"></div>
+      <footer><span>おもち先生と学ぶ　漢検9級チャレンジ</span><span>${pageIndex + 1} / ${pageCount}</span></footer>
     `;
-    printList.appendChild(block);
-  });
+
+    const printList = page.querySelector(".print-kanji-list");
+    pageCharacters.forEach(character => {
+      const item = KANJI_CATALOG.find(card => card.character === character);
+      if (!item) return;
+
+      const accuracy = kanjiAccuracy(character);
+      const block = document.createElement("article");
+      block.className = "print-kanji-block";
+      block.innerHTML = `
+        <div class="print-kanji-heading">
+          <span>${character}</span>
+          <div><b>読み：${item.reading}</b><small>${item.example}</small></div>
+          <em>${accuracy === null ? "これから学習" : `正答率 ${accuracy}%`}</em>
+        </div>
+        <div class="writing-row"><b>なぞる</b><div class="writing-box trace">${character}</div><div class="writing-box trace">${character}</div><div class="writing-box trace">${character}</div><div class="writing-box trace">${character}</div></div>
+        <div class="writing-row"><b>見て書く</b><div class="model-kanji">${character}</div><div class="writing-box"></div><div class="writing-box"></div><div class="writing-box"></div><div class="writing-box"></div></div>
+        <div class="writing-row"><b>見ないで</b><div class="writing-box"></div><div class="writing-box"></div><div class="writing-box"></div><div class="writing-box"></div></div>
+      `;
+      printList.appendChild(block);
+    });
+
+    printSheet.appendChild(page);
+  }
 }
 
 /* -------------------- ごほうび・ログインボーナス -------------------- */

@@ -4,18 +4,18 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#fff8ed">
-<title>おもち先生と学ぶ 漢検9級チャレンジ Ver.2.1.1 Part3-2③</title>
+<title>おもち先生と学ぶ 漢検9級チャレンジ Ver.2.1.2</title>
 <link rel="stylesheet" href="style.css">
 <meta name="description" content="おもち先生と学ぶ、小学2年生向け漢検9級学習ゲーム">
 </head>
 <body>
 <div class="app">
-<header class="top"><div><div class="brand">おもち先生と学ぶ<br>漢検9級チャレンジ</div><div class="ver">Ver.2.1.1 Part3-2③</div></div><button class="icon" id="settingsBtn" aria-label="設定を開く">⚙️</button></header>
+<header class="top"><div><div class="brand">おもち先生と学ぶ<br>漢検9級チャレンジ</div><div class="ver">Ver.2.1.2</div></div><button class="icon" id="settingsBtn" aria-label="設定を開く">⚙️</button></header>
 <main>
 <section id="home" class="screen active">
 <div class="card hero"><div class="hero-row"><div class="face-wrap" id="homeFaceWrap"><img class="mascot" id="homeMascot" src="assets/images/omochi-01-3b54909ac76c.png" alt="おもち先生"><span class="equipped-item" id="homeAccessory" aria-hidden="true"></span><span class="mood" id="homeMood">😊</span></div><div class="speech" id="greeting">今日もいっしょにがんばろう！</div></div><hr>
 <div class="level-card"><div class="row"><b>Lv.<span id="homeLevel">1</span></b><small id="homeExpText">次のレベルまで100EXP</small></div><div class="exp-progress"><span id="homeExpBar"></span></div></div>
-<div class="row"><b>今日のチャレンジ</b><b>Day <span id="homeDay">1</span></b></div><div class="progress"><span id="homeBar"></span></div><div class="row muted"><span id="homePct">0%</span><span id="leftDays">あと60日</span></div><div class="ticket-bar"><span>🎫 ガチャ券</span><strong><span id="homeTickets">0</span>枚</strong></div><br><button class="primary" id="startBtn">今日の学習をはじめる</button></div>
+<div class="row"><b>今日のチャレンジ</b><b>Day <span id="homeDay">1</span></b></div><div class="progress"><span id="homeBar"></span></div><div class="row muted"><span id="homePct">0%</span><span id="leftDays">あと20日</span></div><div class="ticket-bar"><span>🎫 ガチャ券</span><strong><span id="homeTickets">0</span>枚</strong></div><br><button class="primary" id="startBtn">今日の学習をはじめる</button></div>
 <div class="card"><div class="title">がんばり記録</div><div class="stats"><div class="stat">⭐<strong id="stars">0</strong></div><div class="stat">🔥<strong id="streak">0日</strong></div><div class="stat">🎯<strong id="accuracy">--</strong></div></div></div>
 <div class="menu-grid"><button class="menu" id="mapBtn"><span>🗺️</span><b>ぼうけんマップ</b><small>おもち先生の現在地</small></button><button class="menu" id="stickerBtn"><span>⭐</span><b>シール帳</b><small>宝箱のシールを集めよう</small></button><button class="menu" id="gachaBtn"><span>🎰</span><b>おもちガチャ</b><small>ガチャ券でコレクション</small></button><button class="menu" id="rewardBtn"><span>🎁</span><b>ごほうび</b><small>獲得したごほうびを見る</small></button><button class="menu" id="parentBtn"><span>👨‍👩‍👦</span><b>保護者ページ</b><small>学習状況・暗証番号</small></button><button class="menu" id="dressBtn"><span>👒</span><b>着せ替え</b><small>ガチャアイテムを装備</small></button>
 <button class="menu" id="dictBtn"><span>📖</span><b>漢字図鑑</b><small>成績・ミスノートと連携</small></button>
@@ -53,7 +53,8 @@
 <div class="card no-print"><div class="title">手書き練習プリント</div><p class="muted">今日の漢字とミスノートの苦手漢字を自動で選びます。図鑑から好きな漢字を追加することもできます。</p>
 <div class="practice-actions"><button class="secondary" id="practiceAutoBtn">今日＋苦手を自動選択</button><button class="ghost" id="practiceClearBtn">選択をすべて外す</button></div>
 <div class="selected-kanji" id="practiceSelected"></div><p class="muted" id="practicePageHint"></p><button class="primary" id="printBtn">A4で印刷する</button></div>
-<div class="print-sheet" id="printSheet"><div class="print-title"><div><h1>漢字れんしゅうプリント</h1><p id="printSubtitle">今日の漢字とミスノート</p></div><div class="print-meta"><span>日づけ：<b id="printDate"></b></span><span>なまえ：</span></div></div><div id="printKanjiList"></div><footer>おもち先生と学ぶ　漢検9級チャレンジ</footer></div></section>
+<!-- 印刷ページはJavaScriptで4字ずつ作成し、各A4ページに見出しを付けます。 -->
+<div class="print-sheet" id="printSheet" aria-label="A4印刷プレビュー"></div></section>
 <section id="parent" class="screen"><button class="back" id="parentBack">← ホームへ</button><div class="card"><div class="title">保護者ページ</div><div class="stats"><div class="stat">現在<strong>Day <span id="pDay">1</span></strong></div><div class="stat">正解<strong id="pCorrect">0</strong></div><div class="stat">誤答<strong id="pWrong">0</strong></div></div></div><div class="card"><div class="title">苦手な問題</div><div class="list" id="weakList"></div></div><div class="card"><div class="title">ミスノートの漢字</div><p class="muted">間違いが多い順に表示します。プリントにも自動で追加されます。</p><div class="weak-kanji-list" id="parentWeakKanji"></div></div>
 <div class="card"><div class="title">ごほうび管理</div>
 <p class="muted">星を使ってごほうびを獲得できます。獲得後は「使用済み」に切り替えられます。</p>
