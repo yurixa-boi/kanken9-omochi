@@ -4,16 +4,20 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#fff8ed">
-<title>おもち先生と学ぶ 漢検9級チャレンジ Ver.2.1.2</title>
-<link rel="stylesheet" href="style.css">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
+<title>おもち先生と学ぶ 漢検9級チャレンジ Ver.2.1.4</title>
+<!-- クエリの版番号を変えることで、更新後も古いCSSが残ることを防ぎます。 -->
+<link rel="stylesheet" href="style.css?v=2.1.4">
 <meta name="description" content="おもち先生と学ぶ、小学2年生向け漢検9級学習ゲーム">
 </head>
 <body>
 <div class="app">
-<header class="top"><div><div class="brand">おもち先生と学ぶ<br>漢検9級チャレンジ</div><div class="ver">Ver.2.1.2</div></div><button class="icon" id="settingsBtn" aria-label="設定を開く">⚙️</button></header>
+<header class="top"><div><div class="brand">おもち先生と学ぶ<br><span id="brandCourseName">漢検9級</span>チャレンジ</div><div class="ver">Ver.2.1.4</div></div><button class="icon" id="settingsBtn" aria-label="設定を開く">⚙️</button></header>
 <main>
 <section id="home" class="screen active">
-<div class="card hero"><div class="hero-row"><div class="face-wrap" id="homeFaceWrap"><img class="mascot" id="homeMascot" src="assets/images/omochi-01-3b54909ac76c.png" alt="おもち先生"><span class="equipped-item" id="homeAccessory" aria-hidden="true"></span><span class="mood" id="homeMood">😊</span></div><div class="speech" id="greeting">今日もいっしょにがんばろう！</div></div><hr>
+<div class="card hero"><div class="hero-row"><div class="face-wrap" id="homeFaceWrap"><img class="mascot" id="homeMascot" src="assets/images/omochi-01-3b54909ac76c.png?v=2.1.4" alt="おもち先生"><span class="equipped-item" id="homeAccessory" aria-hidden="true"></span><span class="mood" id="homeMood">😊</span></div><div class="speech" id="greeting">今日もいっしょにがんばろう！</div></div><hr>
 <div class="level-card"><div class="row"><b>Lv.<span id="homeLevel">1</span></b><small id="homeExpText">次のレベルまで100EXP</small></div><div class="exp-progress"><span id="homeExpBar"></span></div></div>
 <div class="row"><b>今日のチャレンジ</b><b>Day <span id="homeDay">1</span></b></div><div class="progress"><span id="homeBar"></span></div><div class="row muted"><span id="homePct">0%</span><span id="leftDays">あと20日</span></div><div class="ticket-bar"><span>🎫 ガチャ券</span><strong><span id="homeTickets">0</span>枚</strong></div><br><button class="primary" id="startBtn">今日の学習をはじめる</button></div>
 <div class="card"><div class="title">がんばり記録</div><div class="stats"><div class="stat">⭐<strong id="stars">0</strong></div><div class="stat">🔥<strong id="streak">0日</strong></div><div class="stat">🎯<strong id="accuracy">--</strong></div></div></div>
@@ -23,7 +27,7 @@
 <button class="menu" id="settingsBtn2"><span>⚙️</span><b>設定</b><small>名前と表示</small></button></div>
 </section>
 
-<section id="study" class="screen"><button class="back" id="studyBack">← ホームへ</button><div class="study-head"><div><div class="title" style="margin:0">今日の学習</div><small id="studyDay">Day 1</small></div><b>⭐ <span id="sessionStars">0</span></b></div><div class="study-progress"><span id="studyBar"></span></div><div class="combo" id="combo"></div><div class="card question"><div class="qtype" id="qtype">読み</div><div class="qprompt" id="qprompt"></div><div class="qmain" id="qmain"></div><div class="choices" id="choices"></div><div class="feedback" id="feedback"></div><br><button class="primary hidden" id="nextBtn">つぎへ</button></div></section>
+<section id="study" class="screen"><button class="back" id="studyBack">← ホームへ</button><div class="study-head"><div><div class="title" style="margin:0">今日の学習</div><small><span id="studyDay">Day 1</span>・<span id="qCounter">1 / 10</span></small></div><b>⭐ <span id="sessionStars">0</span></b></div><div class="study-progress"><span id="studyBar"></span></div><div class="combo" id="combo"></div><div class="card question"><div class="qtype" id="qtype">読み</div><div class="qprompt" id="qprompt"></div><div class="qmain" id="qmain"></div><div class="choices" id="choices"></div><div class="feedback" id="feedback" aria-live="polite"></div><br><button class="primary hidden next-question-btn" id="nextBtn">つぎへ</button></div></section>
 
 <section id="result" class="screen"><button class="back" id="resultBack">← ホームへ</button><div class="card"><div class="title" style="text-align:center">今日の結果</div><div class="result-stars" id="resultStars"></div><div class="result-score"><span id="correctNum">0</span> / <span id="totalNum">10</span></div><div class="notice" id="resultMsg"></div><br><button class="secondary" id="retryBtn">まちがいだけ復習</button><br><br><button class="primary" id="resultHome">ホームへ戻る</button></div><div class="card"><div class="title">今回のまちがい</div><div class="list" id="wrongList"></div></div></section>
 
@@ -39,7 +43,7 @@
 <section id="rewards" class="screen"><button class="back" id="rewardBack">← ホームへ</button>
 <div class="card"><div class="title">獲得したごほうび</div><p class="muted">学習でためた星と交換したごほうびです。使う操作は保護者ページで行います。</p><div class="reward-wallet" id="rewardWallet"></div></div></section>
 
-<section id="dress" class="screen"><button class="back" id="dressBack">← ホームへ</button><div class="card"><div class="title">おもち先生の着せ替え</div><p class="muted">ガチャで手に入れたアイテムを選ぶと、ホームのおもち先生に反映されます。</p><div class="dress-preview"><div class="face-wrap" id="dressFaceWrap"><img class="mascot" id="dressMascot" src="assets/images/omochi-02-262385e34177.png" alt="着せ替え中のおもち先生"><span class="equipped-item" id="dressAccessory"></span></div><b id="dressEquippedName">何もつけていません</b></div><div id="dressList" class="dress-grid"></div></div></section>
+<section id="dress" class="screen"><button class="back" id="dressBack">← ホームへ</button><div class="card"><div class="title">おもち先生の着せ替え</div><p class="muted">ガチャで手に入れたアイテムを選ぶと、ホームのおもち先生に反映されます。</p><div class="dress-preview"><div class="face-wrap" id="dressFaceWrap"><img class="mascot" id="dressMascot" src="assets/images/omochi-02-262385e34177.png?v=2.1.4" alt="着せ替え中のおもち先生"><span class="equipped-item" id="dressAccessory"></span></div><b id="dressEquippedName">何もつけていません</b></div><div id="dressList" class="dress-grid"></div></div></section>
 
 <section id="dict" class="screen"><button class="back" id="dictBack">← ホームへ</button>
 <div class="card dict-header"><div class="title">漢字カード図鑑</div><p class="muted">学習結果とミスノートが自動で反映されます。未学習の漢字は灰色で表示されます。</p>
@@ -52,26 +56,31 @@
 <section id="practice" class="screen"><button class="back" id="practiceBack">← ホームへ</button>
 <div class="card no-print"><div class="title">手書き練習プリント</div><p class="muted">今日の漢字とミスノートの苦手漢字を自動で選びます。図鑑から好きな漢字を追加することもできます。</p>
 <div class="practice-actions"><button class="secondary" id="practiceAutoBtn">今日＋苦手を自動選択</button><button class="ghost" id="practiceClearBtn">選択をすべて外す</button></div>
-<div class="selected-kanji" id="practiceSelected"></div><p class="muted" id="practicePageHint"></p><button class="primary" id="printBtn">A4で印刷する</button></div>
+<div class="selected-kanji" id="practiceSelected"></div><p class="muted" id="practicePageHint"></p><p class="print-help">iPhoneは印刷画面からプリンタを選択、WindowsはA4・倍率100%で印刷してください。</p><button class="primary" id="printBtn">A4で印刷する</button></div>
 <!-- 印刷ページはJavaScriptで4字ずつ作成し、各A4ページに見出しを付けます。 -->
 <div class="print-sheet" id="printSheet" aria-label="A4印刷プレビュー"></div></section>
-<section id="parent" class="screen"><button class="back" id="parentBack">← ホームへ</button><div class="card"><div class="title">保護者ページ</div><div class="stats"><div class="stat">現在<strong>Day <span id="pDay">1</span></strong></div><div class="stat">正解<strong id="pCorrect">0</strong></div><div class="stat">誤答<strong id="pWrong">0</strong></div></div></div><div class="card"><div class="title">苦手な問題</div><div class="list" id="weakList"></div></div><div class="card"><div class="title">ミスノートの漢字</div><p class="muted">間違いが多い順に表示します。プリントにも自動で追加されます。</p><div class="weak-kanji-list" id="parentWeakKanji"></div></div>
+<section id="parent" class="screen"><button class="back" id="parentBack">← ホームへ</button><div class="card"><div class="title">保護者ページ</div><div class="stats"><div class="stat">現在<strong>Day <span id="pDay">1</span></strong></div><div class="stat">正解<strong id="pCorrect">0</strong></div><div class="stat">誤答<strong id="pWrong">0</strong></div></div></div><div class="card"><div class="title">問題形式ごとの成績</div><p class="muted">読み・書き取り・使い分け・対になる漢字・漢字の仲間を集計します。</p><div class="format-stats" id="formatStats"></div></div><div class="card"><div class="title">苦手な問題</div><div class="list" id="weakList"></div></div><div class="card"><div class="title">ミスノートの漢字</div><p class="muted">間違いが多い順に表示します。プリントにも自動で追加されます。</p><div class="weak-kanji-list" id="parentWeakKanji"></div></div>
 <div class="card"><div class="title">ごほうび管理</div>
 <p class="muted">星を使ってごほうびを獲得できます。獲得後は「使用済み」に切り替えられます。</p>
 <div class="reward-form"><input id="rewardIconInput" value="🍦" maxlength="2" aria-label="アイコン"><input id="rewardNameInput" placeholder="ごほうび名"><button class="mini-btn" id="addReward">追加</button></div>
 <br><div class="list" id="rewardManage"></div></div>
+<div class="card"><div class="title">学習データの保存・復元</div><p class="muted">進捗・ミスノート・ガチャ・設定をJSONファイルに保存します。iPhoneでは共有画面から「ファイルに保存」を選べます。</p><div class="data-actions"><button class="secondary" id="exportDataBtn">⬇️ データを書き出す</button><button class="ghost" id="importDataBtn">⬆️ ファイルから復元</button><button class="ghost" id="restoreBackupBtn">↩️ 直前のデータへ戻す</button></div><input id="importDataInput" type="file" accept="application/json,.json" hidden><p class="backup-status" id="backupStatus" aria-live="polite"></p></div>
 <div class="card"><button class="secondary" id="changePin">🔑 暗証番号を変更</button><br><br><button class="danger" id="resetBtn">学習データを初期化</button></div></section>
 
-<section id="settings" class="screen"><button class="back" id="settingsBack">← ホームへ</button><div class="card"><div class="title">設定</div><label>呼びかけ用のお名前</label><input id="nameInput" style="width:100%;padding:13px;border:2px solid #ddd;border-radius:14px;margin:8px 0 14px"><button class="primary" id="saveSettings">保存</button></div></section>
+<section id="settings" class="screen"><button class="back" id="settingsBack">← ホームへ</button><div class="card"><div class="title">設定</div><label for="nameInput">呼びかけ用のお名前</label><input id="nameInput" class="name-input" autocomplete="off"><label for="courseSelect">学習コース</label><select id="courseSelect" class="name-input"></select><p class="muted" id="courseHelp">利用できるコースデータから選択します。</p><button class="primary" id="saveSettings">保存</button><p class="settings-version" id="settingsCourseInfo">アプリ Ver.2.1.4</p></div></section>
 </main>
 </div>
 
-<div class="modal" id="pinModal"><div class="dialog"><img class="mascot" src="assets/images/omochi-01-3b54909ac76c.png"><h2 id="pinTitle">保護者用暗証番号</h2><p id="pinDesc">4桁を入力してください。</p><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><div class="keypad" id="keypad"><button class="key" data-n="1">1</button><button class="key" data-n="2">2</button><button class="key" data-n="3">3</button><button class="key" data-n="4">4</button><button class="key" data-n="5">5</button><button class="key" data-n="6">6</button><button class="key" data-n="7">7</button><button class="key" data-n="8">8</button><button class="key" data-n="9">9</button><button class="key" data-a="clear">消す</button><button class="key" data-n="0">0</button><button class="key" data-a="back">⌫</button></div><p id="pinError" style="color:#c33;font-weight:900;min-height:22px"></p><button class="ghost" id="pinClose">閉じる</button></div></div>
-<div class="modal" id="treasureModal"><div class="dialog"><img class="mascot" src="assets/images/omochi-01-3b54909ac76c.png"><div class="treasure">🎁</div><h2 id="treasureTitle">宝箱を発見！</h2><p id="treasureText"></p><div style="font-size:45px" id="treasureIcon">⭐</div><b id="treasureName"></b><br><br><button class="primary" id="treasureClose">シール帳を見る</button></div></div>
+<div class="modal" id="pinModal"><div class="dialog"><img class="mascot" src="assets/images/omochi-01-3b54909ac76c.png?v=2.1.4"><h2 id="pinTitle">保護者用暗証番号</h2><p id="pinDesc">4桁を入力してください。</p><div class="dots"><i class="dot"></i><i class="dot"></i><i class="dot"></i><i class="dot"></i></div><div class="keypad" id="keypad"><button class="key" data-n="1">1</button><button class="key" data-n="2">2</button><button class="key" data-n="3">3</button><button class="key" data-n="4">4</button><button class="key" data-n="5">5</button><button class="key" data-n="6">6</button><button class="key" data-n="7">7</button><button class="key" data-n="8">8</button><button class="key" data-n="9">9</button><button class="key" data-a="clear">消す</button><button class="key" data-n="0">0</button><button class="key" data-a="back">⌫</button></div><p id="pinError" style="color:#c33;font-weight:900;min-height:22px"></p><button class="ghost" id="pinClose">閉じる</button></div></div>
+<div class="modal" id="treasureModal"><div class="dialog"><img class="mascot" src="assets/images/omochi-01-3b54909ac76c.png?v=2.1.4"><div class="treasure">🎁</div><h2 id="treasureTitle">宝箱を発見！</h2><p id="treasureText"></p><div style="font-size:45px" id="treasureIcon">⭐</div><b id="treasureName"></b><br><br><button class="primary" id="treasureClose">シール帳を見る</button></div></div>
 
 <div class="modal" id="dailyModal"><div class="dialog"><div class="face-wrap"><img class="mascot" id="dailyMascot"><span class="mood">🎉</span></div><h2>毎日ボーナス！</h2><div class="daily-grid" id="dailyGrid"></div><p id="dailyText"></p><div style="font-size:42px" id="dailyReward">⭐</div><br><button class="primary" id="dailyClose">受け取る</button></div></div>
 <div class="modal" id="gachaModal"><div class="dialog"><div class="face-wrap"><img class="mascot glow" id="gachaMascot"><span class="mood">🤩</span></div><div class="rarity" id="gachaRarity">N</div><div style="font-size:52px;margin:8px" id="gachaIcon">🎩</div><h2 id="gachaName">アイテム獲得！</h2><p id="gachaResultText"></p><button class="primary" id="gachaClose">コレクションを見る</button></div></div>
-<div class="confetti" id="confetti"></div><div class="toast" id="toast"></div>
+<div class="update-banner" id="updateBanner" role="status"><span>新しいバージョンがあります。</span><button id="reloadAppBtn">更新する</button></div>
+<div class="confetti" id="confetti"></div><div class="toast" id="toast" aria-live="polite"></div>
 
-<script src="app.js" defer></script>
+<!-- JavaScriptも版番号付きURLにして、iPhoneに旧版が残ることを防ぎます。 -->
+<script src="data/course-registry.js?v=2.1.4" defer></script>
+<script src="data/k9-course.js?v=2.1.4" defer></script>
+<script src="app.js?v=2.1.4" defer></script>
 </body></html>

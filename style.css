@@ -1,6 +1,6 @@
 :root{--ink:#3d403f;--muted:#777d79;--cream:#fff8ed;--green:#77b99c;--green2:#43866b;--yellow:#ffd977;--red:#d95c5c;--line:#e9e1d5;--shadow:0 10px 28px rgba(79,67,50,.12)}
-*{box-sizing:border-box} body{margin:0;background:linear-gradient(#fffaf1,#f4f7f1);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",Meiryo,sans-serif;min-height:100dvh}
-button,input{font:inherit} button{touch-action:manipulation} .app{max-width:780px;margin:auto;padding:12px 12px 90px}
+*{box-sizing:border-box} html{-webkit-text-size-adjust:100%;text-size-adjust:100%;background:#f4f7f1} body{margin:0;overflow-x:hidden;background:linear-gradient(#fffaf1,#f4f7f1);color:var(--ink);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Yu Gothic",Meiryo,sans-serif;min-height:100vh;min-height:100dvh}
+button,input,select{font:inherit} button{touch-action:manipulation;-webkit-tap-highlight-color:transparent;user-select:none;-webkit-user-select:none} button:disabled{cursor:not-allowed;opacity:.58;transform:none!important;box-shadow:none!important}.app{max-width:780px;margin:auto;padding:12px max(12px,env(safe-area-inset-right)) max(90px,calc(70px + env(safe-area-inset-bottom))) max(12px,env(safe-area-inset-left))}
 .top{position:sticky;top:0;z-index:30;display:flex;justify-content:space-between;align-items:center;padding:8px 2px 12px;background:linear-gradient(rgba(255,248,237,.98) 75%,transparent)}
 .brand{font-size:18px;font-weight:950;line-height:1.3} .ver{font-size:11px;color:var(--muted);font-weight:800} .icon{border:0;background:#fff;border-radius:50%;width:44px;height:44px;box-shadow:0 4px 13px #0002;font-size:20px}
 .screen{display:none} .screen.active{display:block;animation:fade .25s} @keyframes fade{from{opacity:.3;transform:translateY(5px)}}
@@ -28,7 +28,7 @@ button,input{font:inherit} button{touch-action:manipulation} .app{max-width:780p
 .node.lock .step{background:#e7e7e5;color:#999} .node small{display:inline-block;margin-top:3px;background:#ffffffd9;border-radius:99px;padding:2px 5px;font-size:9px;font-weight:850;white-space:nowrap} .node img{width:54px;height:47px;object-fit:contain}
 .landmark{position:absolute;left:var(--x);top:var(--y);transform:translate(-50%,-50%);font-size:28px;filter:drop-shadow(0 3px 2px #0003)} .chest{animation:bounce .8s infinite alternate} @keyframes bounce{to{transform:translate(-50%,-65%) rotate(4deg)}}
 .stickers{display:grid;grid-template-columns:repeat(3,1fr);gap:10px} .sticker{min-height:112px;padding:11px;border-radius:17px;background:#eee;border:2px dashed #ccc;text-align:center;color:#999} .sticker.got{background:linear-gradient(#fff,#fff2c5);border:2px solid #e5c45f;color:#5b431d} .sticker .big{font-size:31px} .sticker b,.sticker small{display:block} .sticker small{margin-top:5px}
-.modal{display:none;position:fixed;inset:0;z-index:100;background:#0007;align-items:center;justify-content:center;padding:15px} .modal.show{display:flex} .dialog{width:min(100%,400px);background:#fffaf0;border-radius:27px;padding:22px;text-align:center;box-shadow:0 18px 50px #0005} .dialog .mascot{width:125px} .treasure{font-size:65px;animation:jump .8s infinite alternate} @keyframes jump{to{transform:translateY(-8px) rotate(4deg)}}
+.modal{display:none;position:fixed;inset:0;z-index:100;background:#0007;align-items:center;justify-content:center;padding:max(15px,env(safe-area-inset-top)) max(15px,env(safe-area-inset-right)) max(15px,env(safe-area-inset-bottom)) max(15px,env(safe-area-inset-left))} .modal.show{display:flex} .dialog{width:min(100%,400px);max-height:calc(100dvh - 30px);overflow:auto;-webkit-overflow-scrolling:touch;background:#fffaf0;border-radius:27px;padding:22px;text-align:center;box-shadow:0 18px 50px #0005} .dialog .mascot{width:125px} .treasure{font-size:65px;animation:jump .8s infinite alternate} @keyframes jump{to{transform:translateY(-8px) rotate(4deg)}}
 .keypad{display:grid;grid-template-columns:repeat(3,1fr);gap:9px} .key{height:55px;border:0;border-radius:16px;background:#fff;box-shadow:0 4px 0 #ddd;font-size:21px;font-weight:950} .dots{display:flex;justify-content:center;gap:11px;margin:15px} .dot{width:16px;height:16px;border:2px solid #aaa;border-radius:50%} .dot.on{background:var(--green)}
 .list{display:grid;gap:9px} .list-item{padding:12px;border:1px solid var(--line);border-radius:15px;background:#fbfaf7} .notice{padding:12px;background:#fff7d9;border-radius:14px;color:#6e581d;font-weight:750}
 .confetti{position:fixed;inset:0;pointer-events:none;z-index:150;overflow:hidden} .confetti i{position:absolute;top:-20px;width:9px;height:15px;animation:fall 1.4s linear forwards} @keyframes fall{to{transform:translateY(110vh) rotate(500deg);opacity:.2}}
@@ -121,6 +121,11 @@ button,input{font:inherit} button{touch-action:manipulation} .app{max-width:780p
 .weak-kanji-badge{display:grid;grid-template-columns:37px auto;align-items:center;gap:7px;padding:7px 9px;border-radius:13px;background:#fff1f1;border:1px solid #efc1c1}
 .weak-kanji-badge b{font-size:25px}.weak-kanji-badge small{font-weight:850;color:#a15151}
 
+/* 5つの問題形式ごとの正答率 */
+.format-stats{display:grid;grid-template-columns:repeat(5,1fr);gap:7px}
+.format-stat{display:grid;gap:3px;place-items:center;min-width:0;padding:10px 4px;border-radius:14px;background:#f4f8f5;text-align:center}
+.format-stat b{font-size:11px}.format-stat strong{font-size:20px;color:var(--green2)}.format-stat small{font-size:10px;color:var(--muted)}
+
 /* 手書きプリント選択画面 */
 .practice-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:13px}
 .selected-kanji{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
@@ -133,12 +138,19 @@ button,input{font:inherit} button{touch-action:manipulation} .app{max-width:780p
 .print-title h1{font-size:23px;margin:0}.print-title p{margin:5px 0 0;font-weight:750}.print-meta{display:grid;gap:8px;min-width:150px;font-weight:800}
 .print-kanji-list{display:grid;gap:12px}
 .print-kanji-block{border:2px solid #555;border-radius:10px;padding:9px;margin-bottom:12px;break-inside:avoid;page-break-inside:avoid}
-.print-kanji-heading{display:grid;grid-template-columns:54px 1fr auto;align-items:center;gap:9px;margin-bottom:8px}
-.print-kanji-heading>span{font-size:37px;font-weight:950;text-align:center}.print-kanji-heading b,.print-kanji-heading small{display:block}.print-kanji-heading small{margin-top:3px}.print-kanji-heading em{font-size:11px;font-style:normal;font-weight:800;background:#eee;padding:5px 7px;border-radius:9px}
+.print-kanji-heading{display:grid;grid-template-columns:54px minmax(0,1fr) auto;align-items:center;gap:9px;margin-bottom:8px}
+.print-kanji-heading>span{font-size:37px;font-weight:950;text-align:center}.print-kanji-heading b,.print-kanji-heading small{display:block}.print-kanji-heading small{margin-top:3px}.print-kanji-heading em{font-size:11px;font-style:normal;font-weight:800;white-space:nowrap;text-align:center;background:#eee;padding:5px 7px;border-radius:9px}
 .writing-row{display:flex;align-items:center;gap:5px;margin-top:5px}.writing-row>b{flex:0 0 65px;font-size:12px}.writing-box,.model-kanji{position:relative;display:grid;place-items:center;flex:0 1 57px;aspect-ratio:1;border:1.5px solid #777;font-size:32px;font-weight:700}
 .writing-box:before,.model-kanji:before{content:"";position:absolute;left:50%;top:0;bottom:0;border-left:1px dashed #ccc}.writing-box:after,.model-kanji:after{content:"";position:absolute;top:50%;left:0;right:0;border-top:1px dashed #ccc}
 .writing-box.trace{color:#c7c7c7;font-family:"Yu Mincho","Hiragino Mincho ProN",serif}.model-kanji{border:0;font-size:26px}
 .print-page footer{display:flex;justify-content:space-between;gap:12px;margin-top:8px;font-size:10px;color:#666}
+
+/* Ver.2.1.3：保護者向けバックアップと更新通知 */
+.data-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}.data-actions>*:last-child{grid-column:1/-1}
+.backup-status,.print-help,.settings-version{color:var(--muted);font-size:12px;font-weight:750;line-height:1.6}
+.name-input{display:block;width:100%;min-height:50px;margin:8px 0 16px;padding:11px 13px;border:2px solid #d9ddd8;border-radius:14px;background:#fff;font-size:16px}
+.update-banner{display:none;position:fixed;z-index:250;left:50%;bottom:max(14px,env(safe-area-inset-bottom));width:min(calc(100% - 24px),520px);transform:translateX(-50%);align-items:center;justify-content:space-between;gap:12px;padding:11px 13px;border:2px solid #d9bb5e;border-radius:16px;background:#fff4c9;box-shadow:0 10px 30px #0003;font-size:13px;font-weight:850}.update-banner.show{display:flex}.update-banner button{flex:0 0 auto;border:0;border-radius:11px;background:var(--green2);color:#fff;padding:9px 12px;font-weight:900}
+.next-question-btn{position:sticky;bottom:max(8px,env(safe-area-inset-bottom))}
 
 @media(max-width:600px){
   .kanji-grid{grid-template-columns:1fr}
@@ -149,6 +161,26 @@ button,input{font:inherit} button{touch-action:manipulation} .app{max-width:780p
   .writing-row>b{flex-basis:53px;font-size:10px}.writing-box,.model-kanji{font-size:25px}
 }
 
+/* iPhone SE〜Pro Maxで横はみ出しと入力時の自動ズームを防ぎます。 */
+@media(max-width:430px){
+  .app{padding-top:max(8px,env(safe-area-inset-top))}
+  .top{padding-top:4px}.brand{font-size:16px}.ver{font-size:10px}.icon{width:42px;height:42px}
+  .card{padding:14px;border-radius:20px}.hero-row{grid-template-columns:88px minmax(0,1fr);gap:9px}.hero-row .mascot{width:86px}.speech{padding:10px;font-size:13px}
+  .menu-grid{gap:8px}.menu{min-height:94px;padding:12px}.menu span{font-size:25px}.menu b{font-size:14px}.menu small{font-size:11px}
+  .stats{gap:6px}.stat{padding:9px 3px;font-size:12px}.stat strong{font-size:18px}
+  .question{padding:13px}.qmain{font-size:34px}.qmain.sentence{font-size:20px}.choice{min-height:50px;padding:11px;font-size:17px}.feedback{font-size:14px}
+  .dialog{padding:17px}.dialog .mascot{width:100px}.key{height:52px}
+  .reward-form{grid-template-columns:52px minmax(0,1fr)}.reward-form .mini-btn{grid-column:1/-1}
+  .data-actions{grid-template-columns:1fr}.data-actions>*:last-child{grid-column:auto}
+  .format-stats{grid-template-columns:repeat(2,1fr)}.format-stat:last-child{grid-column:1/-1}
+  .search-input,.reward-form input,.name-input{font-size:16px}
+  .print-page{padding:12px}.writing-row{gap:3px}.writing-row>b{flex-basis:50px}.writing-box,.model-kanji{min-width:0}
+}
+
+@media(max-height:560px) and (orientation:landscape){
+  .top{position:static}.app{padding-top:6px}.dialog .mascot{width:76px}.key{height:43px}
+}
+
 /*
  * 印刷時は操作ボタンを隠し、練習用紙だけをA4へ配置します。
  * JavaScriptで作った4字単位のページを、そのままA4へ割り当てます。
@@ -157,19 +189,20 @@ button,input{font:inherit} button{touch-action:manipulation} .app{max-width:780p
 @page{size:A4 portrait;margin:8mm}
 @media print{
   html,body{margin:0!important;padding:0!important;background:#fff;color:#111;-webkit-print-color-adjust:exact;print-color-adjust:exact}
-  .top,.modal,.confetti,.toast,.screen{display:none!important}
+  .top,.modal,.confetti,.toast,.update-banner,.screen{display:none!important}
   #practice.screen{display:block!important;position:static;width:auto;margin:0;padding:0}
   #practice>.back,#practice>.no-print{display:none!important}
   .app{max-width:none;margin:0;padding:0}
   .print-sheet{display:block}
-  .print-page{box-sizing:border-box;display:flex;flex-direction:column;width:100%;height:277mm;margin:0;padding:0;border:0;border-radius:0;box-shadow:none;overflow:hidden;break-after:page;page-break-after:always}
+  .print-page{box-sizing:border-box;display:grid;grid-template-rows:auto minmax(0,1fr) auto;width:194mm;min-width:194mm;max-width:194mm;height:275mm;margin:0;padding:0;border:0;border-radius:0;box-shadow:none;overflow:hidden;break-inside:avoid;page-break-inside:avoid;break-after:page;page-break-after:always}
+  .print-page+.print-page{break-before:page;page-break-before:always}
   .print-page:last-child{break-after:auto;page-break-after:auto}
   .print-title{flex:0 0 auto;margin-bottom:3mm;padding-bottom:2mm}
   .print-title h1{font-size:17pt}.print-title p{font-size:9pt}
   .print-meta{font-size:9pt}
-  .print-kanji-list{display:grid;gap:1.8mm}
+  .print-kanji-list{display:grid;grid-template-rows:repeat(4,minmax(0,1fr));gap:1.8mm;min-height:0}
   .print-kanji-block{padding:1.8mm;margin:0;border-width:1.2px;border-radius:2mm}
-  .print-kanji-heading{grid-template-columns:13mm 1fr auto;gap:2mm;margin-bottom:1mm;min-height:10mm}
+  .print-kanji-heading{grid-template-columns:13mm minmax(0,1fr) 23mm;gap:2mm;margin-bottom:1mm;min-height:10mm}
   .print-kanji-heading>span{font-size:23pt}.print-kanji-heading b{font-size:9pt}.print-kanji-heading small{font-size:7.5pt}.print-kanji-heading em{font-size:7.5pt}
   .writing-row{gap:1.4mm;margin-top:0.9mm}.writing-row>b{flex-basis:17mm;font-size:7.5pt}.writing-box,.model-kanji{flex:0 0 13.5mm;width:13.5mm;height:13.5mm;font-size:21pt}
   .model-kanji{font-size:18pt}

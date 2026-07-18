@@ -2,12 +2,12 @@
 
 /*
  * おもち先生と学ぶ 漢検9級チャレンジ
- * Ver.2.1.2
+ * Ver.2.1.4
  *
  * このファイルでは、学習・復習・ガチャなどの既存機能に加えて、
  * 漢字図鑑、ミスノート、手書きプリントを同じ学習記録から動かします。
- * Ver.2.1.2では、問題文を文脈付きにし、正解位置を毎回分散させ、
- * 漢検9級（小学校1・2年生配当）の範囲外だった漢字を修正しました。
+ * Ver.2.1.4では、9級問題データを級別ファイルへ分離し、実際の問題例を
+ * 参考にした5形式を共通問題エンジンで扱えるようにしました。
  *
  * 大切な互換性ルール：
  * LocalStorageのキー「KANJI9_SAVE_V2」は変更しません。
@@ -15,50 +15,51 @@
  * merge()で補うため、これまでの進捗やガチャデータを残したまま使えます。
  */
 
-const STORAGE_KEY = "KANJI9_SAVE_V2";
-const BACKUP_KEY = "KANJI9_BACKUP";
-/* 現在実装済みのカリキュラムと冒険マップは20日分です。 */
-const COURSE_DAYS = 20;
-const APP_VERSION = "2.1.2";
+const APP_VERSION = "2.1.4";
+const BACKUP_FORMAT_VERSION = 1;
+const UPDATE_CHECK_INTERVAL = 60 * 1000;
+
+/* 画像にも版番号を付け、GitHub Pages更新直後の古い画像キャッシュを避けます。 */
+function assetUrl(path) {
+  return `${path}?v=${encodeURIComponent(APP_VERSION)}`;
+}
 
 const FACES = {
-  normal: "assets/images/omochi-01-3b54909ac76c.png",
-  happy: "assets/images/omochi-02-262385e34177.png",
-  smile: "assets/images/omochi-03-1a5323ab4b4e.png",
-  sad: "assets/images/omochi-04-debbe8228792.png",
-  think: "assets/images/omochi-01-3b54909ac76c.png"
+  normal: assetUrl("assets/images/omochi-01-3b54909ac76c.png"),
+  happy: assetUrl("assets/images/omochi-02-262385e34177.png"),
+  smile: assetUrl("assets/images/omochi-03-1a5323ab4b4e.png"),
+  sad: assetUrl("assets/images/omochi-04-debbe8228792.png"),
+  think: assetUrl("assets/images/omochi-01-3b54909ac76c.png")
 };
 
 const MASCOT = FACES.normal;
 
 /*
- * 現在公開中の学習範囲です。
- * 1つの配列が1日分で、1日5字×読み5問・書き5問を作ります。
+ * 現在は9級コースを読み込みます。8級・7級は同じレジストリへ登録すると、
+ * 画面・採点・復習エンジンを変更せずに切り替えられます。
  */
-const CURRICULUM = [
-  ["山", "川", "空", "石", "田"],
-  ["春", "夏", "秋", "冬", "雪"],
-  ["東", "西", "南", "北", "前"],
-  ["父", "母", "兄", "姉", "弟"],
-  ["朝", "昼", "夜", "時", "分"],
-  ["友", "話", "聞", "読", "書"],
-  ["食", "肉", "米", "魚", "茶"],
-  ["歩", "走", "止", "道", "近"],
-  ["学", "校", "教", "室", "算"],
-  ["春", "南", "母", "夜", "書"],
-  ["数", "半", "足", "引", "同"],
-  ["長", "形", "丸", "角", "線"],
-  ["色", "明", "黒", "光", "白"],
-  ["鳥", "鳴", "馬", "牛", "羽"],
-  ["花", "木", "草", "林", "森"],
-  ["町", "店", "市", "公", "園"],
-  ["工", "買", "作", "会", "売"],
-  ["楽", "元", "強", "弱", "心"],
-  ["立", "行", "帰", "来", "休"],
-  ["計", "形", "明", "鳥", "市"]
-];
+const DEFAULT_COURSE_ID = "k9";
+const requestedCourseId = localStorage.getItem("KANKEN_ACTIVE_COURSE") || DEFAULT_COURSE_ID;
+const ACTIVE_COURSE = window.KankenCourseRegistry
+  ? window.KankenCourseRegistry.get(requestedCourseId)
+    || window.KankenCourseRegistry.get(DEFAULT_COURSE_ID)
+  : null;
 
+if (!ACTIVE_COURSE) {
+  throw new Error("9級のコースデータを読み込めませんでした");
+}
+
+const CURRICULUM = ACTIVE_COURSE.curriculum;
+const READINGS = ACTIVE_COURSE.readings;
+const EXAMPLES = ACTIVE_COURSE.examples;
+const QUESTION_DATA = ACTIVE_COURSE.questionData;
+const QUESTION_FORMATS = ACTIVE_COURSE.formats;
 const AVAILABLE_DAYS = CURRICULUM.length;
+const COURSE_DAYS = AVAILABLE_DAYS;
+const ACTIVE_COURSE_ID = ACTIVE_COURSE.id;
+/* 9級では従来の保存キーをそのまま使います。 */
+const STORAGE_KEY = ACTIVE_COURSE.storageKey || "KANJI9_SAVE_V2";
+const BACKUP_KEY = ACTIVE_COURSE.backupKey || `${STORAGE_KEY}_BACKUP`;
 
 /*
  * Ver.2.1.1までに漢検9級の範囲外だった漢字を差し替えた問題IDです。
@@ -76,61 +77,13 @@ const AUDITED_REPLACED_QUESTION_IDS = new Set([
   "d20r1", "d20w1", "d20r4", "d20w4"
 ]);
 
-/*
- * READINGSは「このアプリの問題で使う読み」です。
- * 漢和辞典に載るすべての読みを示す項目ではありません。
- */
-const READINGS = {
-  "山": "やま", "川": "かわ", "空": "そら", "石": "いし", "田": "た",
-  "春": "はる", "夏": "なつ", "秋": "あき", "冬": "ふゆ", "雪": "ゆき",
-  "東": "ひがし", "西": "にし", "南": "みなみ", "北": "きた", "前": "まえ",
-  "父": "ちち", "母": "はは", "兄": "あに", "姉": "あね", "弟": "おとうと",
-  "朝": "あさ", "昼": "ひる", "夜": "よる", "時": "とき", "分": "ふん",
-  "友": "とも", "話": "はなし", "聞": "きく", "読": "よむ", "書": "かく",
-  "食": "たべる", "肉": "にく", "米": "こめ", "魚": "さかな", "茶": "ちゃ",
-  "歩": "あるく", "走": "はしる", "止": "とまる", "道": "みち", "近": "ちかい",
-  "学": "まなぶ", "校": "こう", "教": "おしえる", "室": "しつ", "算": "さん",
-  "数": "かず", "半": "はん", "足": "たす", "引": "ひく", "同": "おなじ",
-  "長": "ながい", "形": "かたち", "丸": "まる", "角": "かど", "線": "せん",
-  "色": "いろ", "明": "あかるい", "黒": "くろ", "光": "ひかり", "白": "しろ",
-  "鳥": "とり", "鳴": "なく", "馬": "うま", "牛": "うし", "羽": "はね",
-  "花": "はな", "木": "き", "草": "くさ", "林": "はやし", "森": "もり",
-  "町": "まち", "店": "みせ", "市": "し", "公": "こう", "園": "えん",
-  "工": "こう", "買": "かう", "作": "つくる", "会": "あう", "売": "うる",
-  "楽": "たのしい", "元": "げん", "強": "つよい", "弱": "よわい", "心": "こころ",
-  "立": "たつ", "行": "いく", "帰": "かえる", "来": "くる", "休": "やすむ",
-  "計": "はかる"
-};
-
-/* 図鑑カードとプリントに表示する、短く読みやすい例文です。 */
-const EXAMPLES = {
-  "山": "山にのぼる。", "川": "川の水がながれる。", "空": "青い空を見上げる。", "石": "丸い石をひろう。", "田": "田に水を入れる。",
-  "春": "春に花がさく。", "夏": "夏の海であそぶ。", "秋": "秋に木の葉が色づく。", "冬": "冬に雪がふる。", "雪": "白い雪がつもる。",
-  "東": "東から日がのぼる。", "西": "西に日がしずむ。", "南": "南へすすむ。", "北": "北の空を見る。", "前": "前をむいて歩く。",
-  "父": "父と出かける。", "母": "母と料理をする。", "兄": "兄と話す。", "姉": "姉と本を読む。", "弟": "弟とあそぶ。",
-  "朝": "朝早くおきる。", "昼": "昼ごはんを食べる。", "夜": "夜は星が見える。", "時": "出発する時を決める。", "分": "五分だけ休む。",
-  "友": "友だちと学ぶ。", "話": "先生の話を聞く。", "聞": "音をよく聞く。", "読": "本を声に出して読む。", "書": "ノートに字を書く。",
-  "食": "ごはんを食べる。", "肉": "肉を食べる。", "米": "米をとぐ。", "魚": "魚が川をおよぐ。", "茶": "あたたかいお茶をのむ。",
-  "歩": "道を歩く。", "走": "校庭を走る。", "止": "赤信号で止まる。", "道": "学校までの道。", "近": "家の近くの公園。",
-  "学": "漢字を学ぶ。", "校": "学校へ行く。", "教": "先生が教える。", "室": "教室に入る。", "算": "算数の問題をとく。",
-  "数": "星の数をかぞえる。", "半": "半分にわける。", "足": "二と三を足す。", "引": "五から二を引く。", "同": "同じ色をえらぶ。",
-  "長": "長いひもをむすぶ。", "形": "丸い形をかく。", "丸": "紙に丸をかく。", "角": "紙の角をそろえる。", "線": "まっすぐな線を引く。",
-  "色": "好きな色をぬる。", "明": "明るいへや。", "黒": "黒い紙に書く。", "光": "朝の光がさす。", "白": "白い雲がうかぶ。",
-  "鳥": "鳥が空をとぶ。", "鳴": "鳥が鳴く。", "馬": "馬が草原を走る。", "牛": "牛が草を食べる。", "羽": "鳥の羽を見つける。",
-  "花": "赤い花がさく。", "木": "木の下で休む。", "草": "草の上にすわる。", "林": "林の中を歩く。", "森": "森で鳥の声を聞く。",
-  "町": "にぎやかな町を歩く。", "店": "店でパンを買う。", "市": "市でおまつりがある。", "公": "公園であそぶ。", "園": "公園に花がさく。",
-  "工": "工場で車を作る。", "買": "店で本を買う。", "作": "紙で花を作る。", "会": "友だちに会う。", "売": "店で野菜を売る。",
-  "楽": "楽しくべんきょうする。", "元": "元気にあいさつする。", "強": "強い風がふく。", "弱": "弱い力でおす。", "心": "やさしい心をもつ。",
-  "立": "いすから立つ。", "行": "学校へ行く。", "帰": "家に帰る。", "来": "友だちが来る。", "休": "学校を休む。", "計": "時間を計る。"
-};
-
 const AREA_BG = {
-  forest: "assets/images/omochi-05-75614288795c.webp",
-  flower: "assets/images/omochi-06-6e1e1ce060c3.webp",
-  town: "assets/images/omochi-07-bad5b467551a.webp",
-  sea: "assets/images/omochi-08-89a3b9fdf6dc.webp",
-  snow: "assets/images/omochi-09-dac41058cf4b.webp",
-  castle: "assets/images/omochi-10-21d09e72ffae.webp"
+  forest: assetUrl("assets/images/omochi-05-75614288795c.webp"),
+  flower: assetUrl("assets/images/omochi-06-6e1e1ce060c3.webp"),
+  town: assetUrl("assets/images/omochi-07-bad5b467551a.webp"),
+  sea: assetUrl("assets/images/omochi-08-89a3b9fdf6dc.webp"),
+  snow: assetUrl("assets/images/omochi-09-dac41058cf4b.webp"),
+  castle: assetUrl("assets/images/omochi-10-21d09e72ffae.webp")
 };
 
 const AREAS = [
@@ -197,7 +150,7 @@ function defaults() {
       streak: 0,
       lastStudyDate: ""
     },
-    statistics: { totalCorrect: 0, totalWrong: 0, sessions: [] },
+    statistics: { totalCorrect: 0, totalWrong: 0, sessions: [], byFormat: {} },
     review: { queue: [], history: {}, weakIds: [] },
     stickers: { owned: [] },
     gacha: { tickets: 0, owned: [], history: [] },
@@ -215,6 +168,8 @@ function defaults() {
     kanji: { stats: {}, printSelection: [] },
     ui: { mood: "normal" },
     parent: { pinHash: "", pinEnabled: false },
+    course: { activeId: ACTIVE_COURSE_ID },
+    courses: {},
     meta: { updatedAt: new Date().toISOString() }
   };
 }
@@ -242,10 +197,29 @@ function merge(base, saved) {
   });
 
   Object.keys(saved).forEach(key => {
+    /* 読み込んだJSONからオブジェクトのプロトタイプを変更させません。 */
+    if (["__proto__", "constructor", "prototype"].includes(key)) return;
     if (result[key] === undefined) result[key] = saved[key];
   });
 
   return result;
+}
+
+/* 2.1.10なども正しく比較できる、保存データ移行用の版比較です。 */
+function isVersionBefore(version, target) {
+  const parse = value => String(value || "0")
+    .split(".")
+    .map(part => Number.parseInt(part, 10) || 0);
+  const left = parse(version);
+  const right = parse(target);
+  const length = Math.max(left.length, right.length);
+
+  for (let index = 0; index < length; index += 1) {
+    const leftPart = left[index] || 0;
+    const rightPart = right[index] || 0;
+    if (leftPart !== rightPart) return leftPart < rightPart;
+  }
+  return false;
 }
 
 function load() {
@@ -306,7 +280,11 @@ function questionKanji(question) {
  * 変換済みの漢字には加算しないため、起動するたびに数字が増えることはありません。
  */
 function migrateData() {
-  const needsQuestionAuditMigration = data.version !== APP_VERSION;
+  /*
+   * 問題差し替えの整理は2.1.2で完了済みです。単なる版違いを条件にすると、
+   * 2.1.2→2.1.3でも正しい学習履歴を消すため、旧版だけを対象にします。
+   */
+  const needsQuestionAuditMigration = isVersionBefore(data.version, "2.1.2");
 
   /*
    * 差し替え前の問題を苦手問題として出さないよう、該当IDだけを整理します。
@@ -322,6 +300,10 @@ function migrateData() {
   }
 
   data.version = APP_VERSION;
+  data.course = data.course || { activeId: ACTIVE_COURSE_ID };
+  data.course.activeId = ACTIVE_COURSE_ID;
+  data.courses = data.courses || {};
+  data.statistics.byFormat = data.statistics.byFormat || {};
   data.player = data.player || { totalExp: 0, equippedItemId: "" };
   data.kanji = data.kanji || { stats: {}, printSelection: [] };
   data.kanji.stats = data.kanji.stats || {};
@@ -376,21 +358,217 @@ function save() {
   }
 }
 
-function show(screenId) {
+/* -------------------- 学習データの書き出し・復元 -------------------- */
+
+function createBackupEnvelope(saveData = data, reason = "export") {
+  return {
+    app: "kanken9-omochi",
+    formatVersion: BACKUP_FORMAT_VERSION,
+    appVersion: APP_VERSION,
+    storageKey: STORAGE_KEY,
+    reason,
+    exportedAt: new Date().toISOString(),
+    data: saveData
+  };
+}
+
+function getSaveDataFromPayload(payload) {
+  if (payload && payload.app === "kanken9-omochi" && payload.data) return payload.data;
+  /* Ver.2.1.2までの初期化バックアップ（保存データ本体のみ）も復元できます。 */
+  return payload;
+}
+
+function isValidSaveData(candidate) {
+  if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) return false;
+  const requiredObjects = ["progress", "statistics", "review", "gacha", "parent"];
+  if (!requiredObjects.every(key => candidate[key] && typeof candidate[key] === "object")) return false;
+  if (!Array.isArray(candidate.progress.completedDays)) return false;
+  if (!Array.isArray(candidate.statistics.sessions)) return false;
+  if (!Array.isArray(candidate.gacha.owned)) return false;
+  return true;
+}
+
+function storeCurrentBackup(reason) {
+  try {
+    localStorage.setItem(BACKUP_KEY, JSON.stringify(createBackupEnvelope(data, reason)));
+    return true;
+  } catch (error) {
+    toast("直前データを保存できませんでした");
+    return false;
+  }
+}
+
+function backupFileName() {
+  const now = new Date();
+  const time = [now.getHours(), now.getMinutes(), now.getSeconds()]
+    .map(value => String(value).padStart(2, "0"))
+    .join("");
+  return `${ACTIVE_COURSE_ID}-backup-${localDateKey(now)}-${time}.json`;
+}
+
+async function exportData() {
+  const json = JSON.stringify(createBackupEnvelope(), null, 2);
+  const fileName = backupFileName();
+  const blob = new Blob([json], { type: "application/json" });
+  const file = typeof File === "function"
+    ? new File([blob], fileName, { type: "application/json" })
+    : null;
+
+  /* iPhoneでは共有シートから「ファイルに保存」を選べるようにします。 */
+  if (file && navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: `${ACTIVE_COURSE.name}チャレンジ 学習データ` });
+      toast("学習データを書き出しました");
+      return;
+    } catch (error) {
+      if (error && error.name === "AbortError") return;
+      /* 共有できなかった場合は通常のダウンロードへ進みます。 */
+    }
+  }
+
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = fileName;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+  toast("学習データを書き出しました");
+}
+
+function applyImportedData(candidate, reason = "import") {
+  if (!isValidSaveData(candidate)) throw new Error("invalid-save-data");
+  if (!storeCurrentBackup(reason)) throw new Error("backup-failed");
+  data = merge(defaults(), candidate);
+  migrateData();
+  save();
+}
+
+async function importDataFile(file) {
+  if (!file) return;
+  if (file.size > 5 * 1024 * 1024) {
+    toast("ファイルが大きすぎます（5MBまで）");
+    return;
+  }
+
+  try {
+    const payload = JSON.parse(await file.text());
+    const candidate = getSaveDataFromPayload(payload);
+    if (!isValidSaveData(candidate)) throw new Error("invalid-save-data");
+    if (!window.confirm("現在のデータを退避して、このファイルの学習データを復元しますか？")) return;
+    applyImportedData(candidate, "before-import");
+    renderBackupStatus();
+    show("home");
+    toast("学習データを復元しました");
+  } catch (error) {
+    toast("このファイルは復元できません");
+  } finally {
+    $("importDataInput").value = "";
+  }
+}
+
+function readStoredBackup() {
+  try {
+    const payload = JSON.parse(localStorage.getItem(BACKUP_KEY) || "null");
+    const candidate = getSaveDataFromPayload(payload);
+    if (!isValidSaveData(candidate)) return null;
+    return { payload, data: candidate };
+  } catch (error) {
+    return null;
+  }
+}
+
+function renderBackupStatus() {
+  const backup = readStoredBackup();
+  $("restoreBackupBtn").disabled = !backup;
+  if (!backup) {
+    $("backupStatus").textContent = "直前バックアップはまだありません。";
+    return;
+  }
+  const date = backup.payload && (backup.payload.exportedAt || backup.payload.backedUpAt);
+  $("backupStatus").textContent = `直前バックアップ：${date ? displayDate(date) : "日時不明"}`;
+}
+
+function restoreStoredBackup() {
+  const backup = readStoredBackup();
+  if (!backup) {
+    toast("復元できるバックアップがありません");
+    return;
+  }
+  if (!window.confirm("現在のデータと直前バックアップを入れ替えますか？")) return;
+
+  const current = createBackupEnvelope(data, "before-restore");
+  data = merge(defaults(), backup.data);
+  migrateData();
+  try {
+    localStorage.setItem(BACKUP_KEY, JSON.stringify(current));
+  } catch (error) {
+    /* 学習データ本体の復元を優先します。 */
+  }
+  save();
+  renderBackupStatus();
+  show("home");
+  toast("直前の学習データへ戻しました");
+}
+
+let activeScreenId = "home";
+let handlingHistory = false;
+
+/* 画面描画と履歴操作を分け、iPhoneのスワイプバックにも対応します。 */
+function renderScreen(screenId) {
+  const target = $(screenId) ? screenId : "home";
   document.querySelectorAll(".screen").forEach(screen => {
-    screen.classList.toggle("active", screen.id === screenId);
+    screen.classList.toggle("active", screen.id === target);
   });
+  activeScreenId = target;
 
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  window.scrollTo({ top: 0, behavior: "auto" });
 
-  if (screenId === "map") renderMap();
-  if (screenId === "stickers") renderStickers();
-  if (screenId === "gacha") renderGacha();
-  if (screenId === "rewards") renderRewards();
-  if (screenId === "parent") renderParent();
-  if (screenId === "dress") renderDress();
-  if (screenId === "dict") renderDictionary();
-  if (screenId === "practice") renderPractice();
+  if (target === "map") renderMap();
+  if (target === "stickers") renderStickers();
+  if (target === "gacha") renderGacha();
+  if (target === "rewards") renderRewards();
+  if (target === "parent") renderParent();
+  if (target === "dress") renderDress();
+  if (target === "dict") renderDictionary();
+  if (target === "practice") renderPractice();
+}
+
+function show(screenId) {
+  const target = $(screenId) ? screenId : "home";
+
+  if (!handlingHistory) {
+    const currentHistoryScreen = history.state && history.state.screenId
+      ? history.state.screenId
+      : "home";
+    if (target === "home") {
+      if (currentHistoryScreen !== "home") {
+        history.back();
+        return;
+      }
+    } else if (activeScreenId === "home" && currentHistoryScreen === "home") {
+      history.pushState({ screenId: target }, "", location.href);
+    } else {
+      history.replaceState({ screenId: target }, "", location.href);
+    }
+  }
+
+  renderScreen(target);
+}
+
+function hasUnfinishedStudy() {
+  return activeScreenId === "study" && session && !session.finished && !session.abandoned;
+}
+
+function confirmStudyExit() {
+  return window.confirm("学習の途中です。ここまでの回答は保存されません。ホームへ戻りますか？");
+}
+
+function leaveStudy() {
+  if (hasUnfinishedStudy() && !confirmStudyExit()) return;
+  if (session) session.abandoned = true;
+  session = null;
+  show("home");
 }
 
 let toastTimer = null;
@@ -412,12 +590,33 @@ function hash(pinValue) {
   return (result >>> 0).toString(16);
 }
 
+function questionTypeLabel(format) {
+  return QUESTION_FORMATS[format] ? QUESTION_FORMATS[format].label : format;
+}
+
+function makeQuestion({ id, day, format, kanji, prompt, main, choices, answer, explain }) {
+  const answerIndex = typeof answer === "number" ? answer : choices.indexOf(answer);
+  if (answerIndex < 0) throw new Error(`${id}: 正解が選択肢にありません`);
+  return {
+    id,
+    courseId: ACTIVE_COURSE_ID,
+    day,
+    format,
+    type: questionTypeLabel(format),
+    kanji,
+    prompt,
+    main,
+    choices: choices.slice(),
+    answer: answerIndex,
+    explain
+  };
+}
+
 /*
- * 1日分の10問を作ります。
- * 読みが複数ある漢字を単独で表示すると正解を決められないことがあるため、
- * 読み問題も書き問題も、必ず短い例文の中で出題します。
+ * 1日分の全問題バンクを作ります。既存の読み・書きIDは変更せず、
+ * 新しい3形式だけ u（使い分け）・p（対）・b（仲間）のIDを追加します。
  */
-function generateQuestions(day) {
+function generateQuestionBank(day) {
   const characters = CURRICULUM[day - 1] || CURRICULUM[0];
   const questions = [];
 
@@ -430,17 +629,17 @@ function generateQuestions(day) {
       .map(item => READINGS[item] || item)
       .slice(0, 2);
 
-    questions.push({
+    questions.push(makeQuestion({
       id: `d${day}r${index}`,
       day,
-      type: "読み",
+      format: "reading",
       kanji: character,
       prompt: `文の中の【${character}】の読みを選ぼう`,
       main: example,
       choices: [reading, ...otherReadings],
       answer: 0,
       explain: `この文の【${character}】は「${reading}」と読みます。`
-    });
+    }));
   }
 
   for (let index = 0; index < 5; index += 1) {
@@ -449,20 +648,86 @@ function generateQuestions(day) {
     const example = EXAMPLES[character] || `${character}をつかった文。`;
     const otherCharacters = characters.filter(item => item !== character).slice(0, 2);
 
-    questions.push({
+    questions.push(makeQuestion({
       id: `d${day}w${index}`,
       day,
-      type: index === 4 ? "まとめ" : "書き",
+      format: "writing",
       kanji: character,
       prompt: `「${reading}」と読む、□に入る漢字を選ぼう`,
       main: example.replace(character, "□"),
       choices: [character, ...otherCharacters],
       answer: 0,
       explain: `□には「${character}」が入ります。`
-    });
+    }));
+  }
+
+  const usageItems = QUESTION_DATA.usageByDay[day - 1] || [];
+  usageItems.forEach((item, index) => {
+    questions.push(makeQuestion({
+      id: `d${day}u${index}`,
+      day,
+      format: "usage",
+      kanji: item.answer,
+      prompt: "文に合う漢字を選ぼう",
+      main: item.main,
+      choices: item.choices,
+      answer: item.answer,
+      explain: `この文では「${item.answer}」を使います。`
+    }));
+  });
+
+  for (let index = 0; index < 2; index += 1) {
+    const item = QUESTION_DATA.pairByDay[day - 1][index];
+    questions.push(makeQuestion({
+      id: `d${day}p${index}`,
+      day,
+      format: "pair",
+      kanji: item.answer,
+      prompt: "対になる・関係の深い漢字を選ぼう",
+      main: item.main,
+      choices: item.choices,
+      answer: item.answer,
+      explain: `答えは「${item.answer}」です。漢字の組み合わせで覚えよう。`
+    }));
+  }
+
+  for (let index = 0; index < 2; index += 1) {
+    const item = QUESTION_DATA.familyByDay[day - 1][index];
+    questions.push(makeQuestion({
+      id: `d${day}b${index}`,
+      day,
+      format: "family",
+      kanji: item.answer,
+      prompt: "同じ部分・部首の仲間を選ぼう",
+      main: item.main,
+      choices: item.choices,
+      answer: item.answer,
+      explain: item.explain
+    }));
   }
 
   return questions;
+}
+
+/*
+ * 通常学習は5形式を2問ずつ、合計10問にします。読み・書きの5問は
+ * 学習回数に応じて選ぶ位置をずらし、繰り返すと全漢字へ戻ってきます。
+ */
+function generateQuestions(day) {
+  const bank = generateQuestionBank(day);
+  const formatOrder = ["reading", "writing", "usage", "pair", "family"];
+  const previousSessions = data && data.statistics && Array.isArray(data.statistics.sessions)
+    ? data.statistics.sessions.filter(item => item.day === day && (item.courseId || "k9") === ACTIVE_COURSE_ID).length
+    : 0;
+
+  const selected = formatOrder.flatMap(format => {
+    const candidates = bank.filter(question => question.format === format);
+    if (candidates.length <= 2) return candidates;
+    const startIndex = (previousSessions * 2) % candidates.length;
+    return [candidates[startIndex], candidates[(startIndex + 1) % candidates.length]];
+  });
+
+  return selected;
 }
 
 /* 配列を直接書き換えず、ランダムな順番の複製を返します。 */
@@ -501,7 +766,7 @@ function prepareQuestionsForSession(questions) {
 
 function getQuestionById(questionId) {
   for (let day = 1; day <= AVAILABLE_DAYS; day += 1) {
-    const question = generateQuestions(day).find(item => item.id === questionId);
+    const question = generateQuestionBank(day).find(item => item.id === questionId);
     if (question) return question;
   }
   return null;
@@ -523,8 +788,8 @@ function startStudy(day, customQuestions) {
     questions = questions.concat(reviewQuestions);
   }
 
-  /* 復習問題を追加した後、全問題の正解位置をまとめて分散させます。 */
-  questions = prepareQuestionsForSession(questions);
+  /* 形式の順番と正解位置の両方を毎回組み替えます。 */
+  questions = prepareQuestionsForSession(shuffledCopy(questions));
 
   session = {
     day: safeDay,
@@ -536,7 +801,10 @@ function startStudy(day, customQuestions) {
     combo: 0,
     maxCombo: 0,
     stars: 0,
-    answered: false
+    answered: false,
+    transitioning: false,
+    finished: false,
+    abandoned: false
   };
 
   $("studyDay").textContent = `Day ${safeDay}`;
@@ -546,6 +814,7 @@ function startStudy(day, customQuestions) {
 }
 
 function renderQuestion() {
+  if (!session || session.finished || session.abandoned) return;
   if (session.index >= session.questions.length) {
     finishStudy();
     return;
@@ -554,14 +823,17 @@ function renderQuestion() {
   setMood("think");
   const question = session.questions[session.index];
   session.answered = false;
+  session.transitioning = false;
 
   $("studyBar").style.width = `${Math.round(session.index / session.questions.length * 100)}%`;
+  $("qCounter").textContent = `${session.index + 1} / ${session.questions.length}`;
   $("qtype").textContent = question.type;
   $("qprompt").textContent = question.prompt;
   $("qmain").textContent = question.main;
   $("qmain").classList.toggle("sentence", question.main.length > 4);
   $("feedback").className = "feedback";
   $("nextBtn").classList.add("hidden");
+  $("nextBtn").disabled = true;
   $("combo").textContent = session.combo >= 2 ? `🔥 ${session.combo}コンボ！` : "";
 
   const choices = $("choices");
@@ -576,7 +848,8 @@ function renderQuestion() {
 }
 
 function answer(choiceIndex, selectedButton) {
-  if (session.answered) return;
+  /* タップ直後にロックし、同じイベントループ内の連打も1回答にします。 */
+  if (!session || session.answered || session.transitioning || session.finished || session.abandoned) return;
   session.answered = true;
 
   const question = session.questions[session.index];
@@ -612,6 +885,15 @@ function answer(choiceIndex, selectedButton) {
   $("sessionStars").textContent = String(session.stars);
   $("combo").textContent = session.combo >= 2 ? `🔥 ${session.combo}コンボ！` : "";
   $("nextBtn").classList.remove("hidden");
+  $("nextBtn").disabled = false;
+}
+
+function goToNextQuestion() {
+  if (!session || !session.answered || session.transitioning || session.finished || session.abandoned) return;
+  session.transitioning = true;
+  $("nextBtn").disabled = true;
+  session.index += 1;
+  renderQuestion();
 }
 
 /* 問題単位の復習データを、これまでと同じ形式で更新します。 */
@@ -697,17 +979,38 @@ function updateKanjiStatistics() {
   });
 }
 
+function updateFormatStatistics() {
+  data.statistics.byFormat = data.statistics.byFormat || {};
+  session.results.forEach(result => {
+    const format = result.question.format || "legacy";
+    const statistics = data.statistics.byFormat[format] || { correct: 0, wrong: 0 };
+    if (result.isCorrect) statistics.correct += 1;
+    else statistics.wrong += 1;
+    data.statistics.byFormat[format] = statistics;
+  });
+}
+
 function finishStudy() {
+  /* 結果保存・EXP・ガチャ券付与を、どの経路から呼ばれても1度だけにします。 */
+  if (!session || session.finished || session.abandoned) return;
+  session.finished = true;
   updateReview();
   updateKanjiStatistics();
+  updateFormatStatistics();
 
   data.statistics.totalCorrect += session.correct;
   data.statistics.totalWrong += session.wrong.length;
   data.statistics.sessions.push({
+    courseId: ACTIVE_COURSE_ID,
     day: session.day,
     date: new Date().toISOString(),
     correct: session.correct,
-    total: session.questions.length
+    total: session.questions.length,
+    formats: session.results.reduce((summary, result) => {
+      const format = result.question.format || "legacy";
+      summary[format] = (summary[format] || 0) + 1;
+      return summary;
+    }, {})
   });
 
   data.progress.totalStars += session.stars;
@@ -891,10 +1194,14 @@ function weightedItem() {
   return GACHA_ITEMS[0];
 }
 
+let gachaDrawing = false;
+
 function renderGacha() {
   $("gachaTickets").textContent = String(data.gacha.tickets || 0);
-  $("drawGacha").disabled = (data.gacha.tickets || 0) < 1;
-  $("drawGacha").textContent = (data.gacha.tickets || 0) < 1
+  $("drawGacha").disabled = gachaDrawing || (data.gacha.tickets || 0) < 1;
+  $("drawGacha").textContent = gachaDrawing
+    ? "抽選中…"
+    : (data.gacha.tickets || 0) < 1
     ? "ガチャ券がありません"
     : "ガチャを回す（1枚）";
 
@@ -911,11 +1218,14 @@ function renderGacha() {
 }
 
 function drawGacha() {
+  if (gachaDrawing) return;
   if ((data.gacha.tickets || 0) < 1) {
     toast("ガチャ券がありません");
     return;
   }
 
+  /* 抽選前にロックし、連打で複数枚消費されることを防ぎます。 */
+  gachaDrawing = true;
   data.gacha.tickets -= 1;
   const item = weightedItem();
   const isNew = !data.gacha.owned.includes(item.id);
@@ -1177,7 +1487,7 @@ function renderPractice() {
   $("practicePageHint").textContent = selection.length
     ? `${selection.length}字を選択中です。印刷は${pageCount}ページです（1ページ4字）。`
     : "漢字を選ぶと、ここに印刷見本が表示されます。";
-  $("printBtn").disabled = !selection.length;
+  $("printBtn").disabled = printInProgress || !selection.length;
 
   const currentDay = Math.max(1, Math.min(AVAILABLE_DAYS, data.progress.currentDay));
   const printSheet = $("printSheet");
@@ -1204,7 +1514,7 @@ function renderPractice() {
         <div class="print-meta"><span>日づけ：<b>${printDate}</b></span><span>なまえ：</span></div>
       </div>
       <div class="print-kanji-list"></div>
-      <footer><span>おもち先生と学ぶ　漢検9級チャレンジ</span><span>${pageIndex + 1} / ${pageCount}</span></footer>
+      <footer><span>おもち先生と学ぶ　${escapeHTML(ACTIVE_COURSE.name)}チャレンジ</span><span>${pageIndex + 1} / ${pageCount}</span></footer>
     `;
 
     const printList = page.querySelector(".print-kanji-list");
@@ -1231,6 +1541,33 @@ function renderPractice() {
     printSheet.appendChild(page);
   }
 }
+
+let printInProgress = false;
+
+async function printPractice() {
+  if (printInProgress || !data.kanji.printSelection.length) return;
+  printInProgress = true;
+  renderPractice();
+
+  try {
+    /* 日本語フォントとレイアウトが確定してから印刷画面を開きます。 */
+    if (document.fonts && document.fonts.ready) await document.fonts.ready;
+    await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+    window.print();
+  } finally {
+    /* iOSではafterprintが発火しない場合があるため、タイマーでも解除します。 */
+    setTimeout(() => {
+      printInProgress = false;
+      renderPractice();
+    }, 1200);
+  }
+}
+
+window.addEventListener("beforeprint", renderPractice);
+window.addEventListener("afterprint", () => {
+  printInProgress = false;
+  renderPractice();
+});
 
 /* -------------------- ごほうび・ログインボーナス -------------------- */
 
@@ -1356,8 +1693,25 @@ function handleDailyLogin() {
 
 /* -------------------- 保護者ページ -------------------- */
 
+function renderFormatStatistics() {
+  const container = $("formatStats");
+  if (!container) return;
+  container.innerHTML = "";
+
+  Object.entries(QUESTION_FORMATS).forEach(([format, definition]) => {
+    const statistics = data.statistics.byFormat[format] || { correct: 0, wrong: 0 };
+    const total = Number(statistics.correct || 0) + Number(statistics.wrong || 0);
+    const accuracy = total ? Math.round(Number(statistics.correct || 0) / total * 100) : null;
+    const card = document.createElement("div");
+    card.className = "format-stat";
+    card.innerHTML = `<b>${escapeHTML(definition.shortLabel || definition.label)}</b><strong>${accuracy === null ? "--" : `${accuracy}%`}</strong><small>${total}問</small>`;
+    container.appendChild(card);
+  });
+}
+
 function renderParent() {
   renderRewardManage();
+  renderFormatStatistics();
   $("pDay").textContent = String(data.progress.currentDay);
   $("pCorrect").textContent = String(data.statistics.totalCorrect);
   $("pWrong").textContent = String(data.statistics.totalWrong);
@@ -1386,19 +1740,36 @@ function renderParent() {
 
   if (!weakKanji.length) {
     weakKanjiBox.innerHTML = "<div class='notice'>ミスノートの漢字はまだありません。</div>";
-    return;
+  } else {
+    weakKanji.slice(0, 12).forEach(item => {
+      const badge = document.createElement("span");
+      const statistics = getKanjiStatistics(item.character);
+      badge.className = "weak-kanji-badge";
+      badge.innerHTML = `<b>${item.character}</b><small>ミス${statistics.wrong}回</small>`;
+      weakKanjiBox.appendChild(badge);
+    });
   }
 
-  weakKanji.slice(0, 12).forEach(item => {
-    const badge = document.createElement("span");
-    const statistics = getKanjiStatistics(item.character);
-    badge.className = "weak-kanji-badge";
-    badge.innerHTML = `<b>${item.character}</b><small>ミス${statistics.wrong}回</small>`;
-    weakKanjiBox.appendChild(badge);
-  });
+  renderBackupStatus();
 }
 
 /* -------------------- ホーム画面 -------------------- */
+
+function renderCourseSelector() {
+  const select = $("courseSelect");
+  if (!select || !window.KankenCourseRegistry) return;
+  select.innerHTML = "";
+  window.KankenCourseRegistry.list().forEach(course => {
+    const option = document.createElement("option");
+    option.value = course.id;
+    option.textContent = `${course.name}（${course.completionLevel || "学習コース"}）`;
+    option.selected = course.id === ACTIVE_COURSE_ID;
+    select.appendChild(option);
+  });
+  $("courseHelp").textContent = select.options.length > 1
+    ? "コースを変更すると、その級の保存データへ切り替わります。"
+    : "現在は9級のみです。8級・7級のデータ追加後にここから選べます。";
+}
 
 function renderAll() {
   const completedCount = data.progress.completedDays.length;
@@ -1406,6 +1777,11 @@ function renderAll() {
   const totalAnswers = data.statistics.totalCorrect + data.statistics.totalWrong;
   const level = getLevel();
   const levelProgress = getLevelProgress();
+
+  document.title = `おもち先生と学ぶ ${ACTIVE_COURSE.name}チャレンジ Ver.${APP_VERSION}`;
+  $("brandCourseName").textContent = ACTIVE_COURSE.name;
+  $("settingsCourseInfo").textContent = `アプリ Ver.${APP_VERSION}／コースデータ ${ACTIVE_COURSE_ID}`;
+  renderCourseSelector();
 
   $("homeDay").textContent = String(data.progress.currentDay);
   $("homeBar").style.width = `${coursePercent}%`;
@@ -1449,8 +1825,12 @@ function burst(count) {
 let pinMode = "unlock";
 let pinValue = "";
 let firstPin = "";
+let pinProcessing = false;
+let pinTimer = null;
 
 function openPin(mode) {
+  clearTimeout(pinTimer);
+  pinProcessing = false;
   pinMode = mode;
   pinValue = "";
   firstPin = "";
@@ -1474,6 +1854,7 @@ function renderPinDots() {
 }
 
 function processPin() {
+  if (!pinProcessing || pinValue.length !== 4) return;
   const enteredPin = pinValue;
   pinValue = "";
   renderPinDots();
@@ -1483,6 +1864,7 @@ function processPin() {
     pinMode = "setup2";
     $("pinTitle").textContent = "もう一度入力";
     $("pinDesc").textContent = "確認のため、同じ4桁を入力してください。";
+    pinProcessing = false;
     return;
   }
 
@@ -1490,6 +1872,7 @@ function processPin() {
     if (enteredPin !== firstPin) {
       pinMode = "setup";
       $("pinError").textContent = "一致しません。最初から入力してください。";
+      pinProcessing = false;
       return;
     }
 
@@ -1498,11 +1881,13 @@ function processPin() {
     save();
     $("pinModal").classList.remove("show");
     show("parent");
+    pinProcessing = false;
     return;
   }
 
   if (hash(enteredPin) !== data.parent.pinHash) {
     $("pinError").textContent = "暗証番号が違います";
+    pinProcessing = false;
     return;
   }
 
@@ -1512,29 +1897,36 @@ function processPin() {
   } else {
     show("parent");
   }
+  pinProcessing = false;
 }
 
 /* -------------------- ボタン操作 -------------------- */
 
 document.querySelectorAll("#keypad .key").forEach(button => {
   button.addEventListener("click", () => {
+    if (pinProcessing) return;
     $("pinError").textContent = "";
     if (button.dataset.n !== undefined && pinValue.length < 4) pinValue += button.dataset.n;
     if (button.dataset.a === "back") pinValue = pinValue.slice(0, -1);
     if (button.dataset.a === "clear") pinValue = "";
     renderPinDots();
-    if (pinValue.length === 4) setTimeout(processPin, 100);
+    if (pinValue.length === 4) {
+      pinProcessing = true;
+      clearTimeout(pinTimer);
+      pinTimer = setTimeout(processPin, 100);
+    }
   });
 });
 
-$("pinClose").addEventListener("click", () => $("pinModal").classList.remove("show"));
+$("pinClose").addEventListener("click", () => {
+  clearTimeout(pinTimer);
+  pinProcessing = false;
+  $("pinModal").classList.remove("show");
+});
 
 $("startBtn").addEventListener("click", () => startStudy(data.progress.currentDay));
-$("nextBtn").addEventListener("click", () => {
-  session.index += 1;
-  renderQuestion();
-});
-$("studyBack").addEventListener("click", () => show("home"));
+$("nextBtn").addEventListener("click", goToNextQuestion);
+$("studyBack").addEventListener("click", leaveStudy);
 $("resultBack").addEventListener("click", () => show("home"));
 $("resultHome").addEventListener("click", () => show("home"));
 $("retryBtn").addEventListener("click", () => startStudy(session.day, session.wrong));
@@ -1548,6 +1940,7 @@ $("gachaBtn").addEventListener("click", () => show("gacha"));
 $("gachaBack").addEventListener("click", () => show("home"));
 $("drawGacha").addEventListener("click", drawGacha);
 $("gachaClose").addEventListener("click", () => {
+  gachaDrawing = false;
   $("gachaModal").classList.remove("show");
   show("gacha");
 });
@@ -1584,7 +1977,7 @@ $("practiceClearBtn").addEventListener("click", () => {
   save();
   renderPractice();
 });
-$("printBtn").addEventListener("click", () => window.print());
+$("printBtn").addEventListener("click", printPractice);
 
 $("rewardBtn").addEventListener("click", () => show("rewards"));
 $("rewardBack").addEventListener("click", () => show("home"));
@@ -1608,13 +2001,23 @@ $("parentBtn").addEventListener("click", () => {
 });
 $("parentBack").addEventListener("click", () => show("home"));
 $("changePin").addEventListener("click", () => openPin("change"));
+$("exportDataBtn").addEventListener("click", exportData);
+$("importDataBtn").addEventListener("click", () => $("importDataInput").click());
+$("importDataInput").addEventListener("change", event => importDataFile(event.target.files[0]));
+$("restoreBackupBtn").addEventListener("click", restoreStoredBackup);
 
 $("settingsBtn").addEventListener("click", () => show("settings"));
 $("settingsBtn2").addEventListener("click", () => show("settings"));
 $("settingsBack").addEventListener("click", () => show("home"));
 $("saveSettings").addEventListener("click", () => {
+  const selectedCourseId = $("courseSelect").value || ACTIVE_COURSE_ID;
   data.profile.name = $("nameInput").value.trim();
   save();
+  if (selectedCourseId !== ACTIVE_COURSE_ID) {
+    localStorage.setItem("KANKEN_ACTIVE_COURSE", selectedCourseId);
+    location.reload();
+    return;
+  }
   toast("保存しました");
   show("home");
 });
@@ -1631,7 +2034,7 @@ $("dailyClose").addEventListener("click", () => {
 
 $("resetBtn").addEventListener("click", () => {
   if (!window.confirm("すべての学習データを初期化しますか？")) return;
-  localStorage.setItem(BACKUP_KEY, JSON.stringify(data));
+  if (!storeCurrentBackup("before-reset")) return;
   data = defaults();
   save();
   show("home");
@@ -1647,8 +2050,72 @@ $("homeFaceWrap").addEventListener("click", () => {
   setTimeout(() => $("homeFaceWrap").classList.remove("mascot-tap"), 650);
 });
 
+/* -------------------- ブラウザーの戻る操作・更新確認 -------------------- */
+
+window.addEventListener("popstate", event => {
+  let target = event.state && event.state.screenId ? event.state.screenId : "home";
+
+  if (hasUnfinishedStudy() && target !== "study") {
+    if (!confirmStudyExit()) {
+      history.pushState({ screenId: "study" }, "", location.href);
+      return;
+    }
+    session.abandoned = true;
+    session = null;
+  }
+
+  if (target === "study" && (!session || session.finished || session.abandoned)) {
+    target = "home";
+    history.replaceState({ screenId: "home" }, "", location.href);
+  }
+
+  document.querySelectorAll(".modal.show").forEach(modal => modal.classList.remove("show"));
+  handlingHistory = true;
+  renderScreen(target);
+  handlingHistory = false;
+});
+
+window.addEventListener("beforeunload", event => {
+  if (!hasUnfinishedStudy()) return;
+  event.preventDefault();
+  event.returnValue = "";
+});
+
+let lastUpdateCheck = 0;
+let availableVersion = "";
+
+async function checkForAppUpdate(force = false) {
+  const now = Date.now();
+  if (!force && now - lastUpdateCheck < UPDATE_CHECK_INTERVAL) return;
+  lastUpdateCheck = now;
+
+  try {
+    const response = await fetch(`version.json?t=${now}`, { cache: "no-store" });
+    if (!response.ok) return;
+    const latest = await response.json();
+    if (latest.version && isVersionBefore(APP_VERSION, latest.version)) {
+      availableVersion = latest.version;
+      $("updateBanner").classList.add("show");
+    }
+  } catch (error) {
+    /* オフライン時は現在の版をそのまま使えます。 */
+  }
+}
+
+$("reloadAppBtn").addEventListener("click", () => {
+  const url = new URL(location.href);
+  url.searchParams.set("appVersion", availableVersion || Date.now());
+  location.replace(url.toString());
+});
+
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") checkForAppUpdate();
+});
+
 /* -------------------- 起動処理 -------------------- */
 
+history.replaceState({ screenId: "home" }, "", location.href);
 migrateData();
 renderAll();
 setTimeout(handleDailyLogin, 450);
+setTimeout(() => checkForAppUpdate(true), 1000);
