@@ -2,12 +2,12 @@
 
 /*
  * おもち先生と学ぶ 漢検9級チャレンジ
- * Ver.2.1.4
+ * Ver.2.1.5
  *
  * このファイルでは、学習・復習・ガチャなどの既存機能に加えて、
  * 漢字図鑑、ミスノート、手書きプリントを同じ学習記録から動かします。
- * Ver.2.1.4では、9級問題データを級別ファイルへ分離し、実際の問題例を
- * 参考にした5形式を共通問題エンジンで扱えるようにしました。
+ * Ver.2.1.5では、通常シールとの択一抽選になるリアルごほうび交換券と、
+ * 保護者が設定できるドロップ率・使用済み履歴を追加しました。
  *
  * 大切な互換性ルール：
  * LocalStorageのキー「KANJI9_SAVE_V2」は変更しません。
@@ -15,7 +15,7 @@
  * merge()で補うため、これまでの進捗やガチャデータを残したまま使えます。
  */
 
-const APP_VERSION = "2.1.4";
+const APP_VERSION = "2.1.5";
 const BACKUP_FORMAT_VERSION = 1;
 const UPDATE_CHECK_INTERVAL = 60 * 1000;
 
@@ -157,10 +157,10 @@ function defaults() {
     daily: { lastLogin: "", loginStreak: 0, totalDays: 0 },
     rewards: {
       catalog: [
-        { id: "r1", icon: "🍦", name: "アイス", cost: 20 },
-        { id: "r2", icon: "📺", name: "動画15分", cost: 15 },
-        { id: "r3", icon: "🥤", name: "コーラ", cost: 25 },
-        { id: "r4", icon: "🍩", name: "好きなおやつ", cost: 20 }
+        { id: "r1", icon: "🍦", name: "アイス", cost: 20, dropRate: 0 },
+        { id: "r2", icon: "📺", name: "動画15分", cost: 15, dropRate: 0 },
+        { id: "r3", icon: "🥤", name: "コーラ", cost: 25, dropRate: 0 },
+        { id: "r4", icon: "🍩", name: "好きなおやつ", cost: 20, dropRate: 0 }
       ],
       earned: []
     },
@@ -1194,6 +1194,39 @@ function weightedItem() {
   return GACHA_ITEMS[0];
 }
 
+function rewardDropTotal() {
+  return (data.rewards.catalog || []).reduce((sum, reward) => {
+    const rate = Number(reward.dropRate);
+    return sum + (Number.isFinite(rate) && rate > 0 ? rate : 0);
+  }, 0);
+}
+
+/* 0〜100の同じ抽選枠から交換券を判定し、残りを通常シールにします。 */
+function drawRealReward() {
+  let value = Math.random() * 100;
+  for (const reward of data.rewards.catalog || []) {
+    const rate = Math.max(0, Number(reward.dropRate) || 0);
+    value -= rate;
+    if (value < 0) return reward;
+  }
+  return null;
+}
+
+function createEarnedReward(reward, source = "gacha") {
+  const earned = {
+    id: `e${Date.now()}${Math.random().toString(36).slice(2, 7)}`,
+    rewardId: reward.id,
+    rewardName: reward.name,
+    rewardIcon: reward.icon,
+    source,
+    used: false,
+    date: new Date().toISOString(),
+    usedAt: ""
+  };
+  data.rewards.earned.push(earned);
+  return earned;
+}
+
 let gachaDrawing = false;
 
 function renderGacha() {
@@ -1227,11 +1260,16 @@ function drawGacha() {
   /* 抽選前にロックし、連打で複数枚消費されることを防ぎます。 */
   gachaDrawing = true;
   data.gacha.tickets -= 1;
-  const item = weightedItem();
-  const isNew = !data.gacha.owned.includes(item.id);
+  const reward = drawRealReward();
+  const item = reward ? null : weightedItem();
+  const isNew = item ? !data.gacha.owned.includes(item.id) : false;
+  const drawnAt = new Date().toISOString();
+  const earnedReward = reward ? createEarnedReward(reward, "gacha") : null;
 
-  if (isNew) data.gacha.owned.push(item.id);
-  data.gacha.history.push({ id: item.id, date: new Date().toISOString(), isNew });
+  if (item && isNew) data.gacha.owned.push(item.id);
+  data.gacha.history.push(reward
+    ? { type: "reward", rewardId: reward.id, earnedId: earnedReward.id, date: drawnAt }
+    : { type: "sticker", id: item.id, date: drawnAt, isNew });
   save();
 
   $("gachaMachine").classList.add("spin");
@@ -1241,19 +1279,21 @@ function drawGacha() {
   setTimeout(() => {
     $("gachaMachine").classList.remove("spin");
     $("gachaTitle").textContent = "おもちガチャ";
-    $("gachaRarity").className = `rarity ${item.rarity}`;
-    $("gachaRarity").textContent = item.rarity;
-    $("gachaIcon").textContent = item.icon;
-    $("gachaName").textContent = item.name;
-    $("gachaResultText").textContent = isNew
+    $("gachaRarity").className = reward ? "rarity reward-ticket" : `rarity ${item.rarity}`;
+    $("gachaRarity").textContent = reward ? "交換券" : item.rarity;
+    $("gachaIcon").textContent = reward ? reward.icon : item.icon;
+    $("gachaName").textContent = reward ? reward.name : item.name;
+    $("gachaResultText").textContent = reward
+      ? "リアルごほうび交換券が当たりました！ごほうび画面に保存しました。"
+      : isNew
       ? "新しいアイテムです！着せ替え画面で装備できます。"
       : "持っているアイテムなので、⭐3個に交換しました。";
 
-    if (!isNew) data.progress.totalStars += 3;
+    if (item && !isNew) data.progress.totalStars += 3;
     $("gachaMascot").src = FACES.happy;
     save();
     $("gachaModal").classList.add("show");
-    burst(item.rarity === "SSR" ? 70 : item.rarity === "SR" ? 50 : 30);
+    burst(reward ? 70 : item.rarity === "SSR" ? 70 : item.rarity === "SR" ? 50 : 30);
     renderGacha();
   }, 1200);
 }
@@ -1582,12 +1622,16 @@ function renderRewards() {
   }
 
   earned.slice().reverse().forEach(earnedReward => {
-    const reward = data.rewards.catalog.find(item => item.id === earnedReward.rewardId);
-    if (!reward) return;
+    const catalogReward = data.rewards.catalog.find(item => item.id === earnedReward.rewardId);
+    const reward = catalogReward || {
+      icon: earnedReward.rewardIcon || "🎁",
+      name: earnedReward.rewardName || "削除済みのごほうび"
+    };
+    const sourceLabel = earnedReward.source === "gacha" ? "ガチャ交換券" : "星と交換";
 
     const row = document.createElement("div");
     row.className = `reward-row${earnedReward.used ? " used" : ""}`;
-    row.innerHTML = `<span class="reward-icon">${escapeHTML(reward.icon)}</span><div><b>${escapeHTML(reward.name)}</b><small>${earnedReward.used ? "使用済み" : "未使用"}</small></div><span>${earnedReward.used ? "✓" : "🎁"}</span>`;
+    row.innerHTML = `<span class="reward-icon">${escapeHTML(reward.icon)}</span><div><b>${escapeHTML(reward.name)}</b><small>${sourceLabel}／${earnedReward.used ? "使用済み" : "未使用"}</small></div><span>${earnedReward.used ? "✓" : "🎟️"}</span>`;
     wallet.appendChild(row);
   });
 }
@@ -1598,9 +1642,29 @@ function renderRewardManage() {
   box.innerHTML = "";
 
   data.rewards.catalog.forEach(reward => {
+    const rate = Math.max(0, Number(reward.dropRate) || 0);
     const item = document.createElement("div");
     item.className = "list-item";
-    item.innerHTML = `<div class="row"><b>${escapeHTML(reward.icon)} ${escapeHTML(reward.name)}</b><span>⭐${reward.cost}</span></div><div class="row reward-buttons"><button class="mini-btn use">星と交換</button><button class="mini-btn delete">削除</button></div>`;
+    item.innerHTML = `<div class="row"><b>${escapeHTML(reward.icon)} ${escapeHTML(reward.name)}</b><span>⭐${reward.cost}</span></div><label class="drop-rate-row">ガチャ確率 <input class="drop-rate" type="number" min="0" max="100" step="0.1" inputmode="decimal" value="${rate}">%</label><div class="row reward-buttons"><button class="mini-btn rate-save">確率を保存</button><button class="mini-btn use">星と交換</button><button class="mini-btn delete">削除</button></div>`;
+
+    item.querySelector(".rate-save").addEventListener("click", () => {
+      const input = item.querySelector(".drop-rate");
+      const nextRate = Number(input.value);
+      if (!Number.isFinite(nextRate) || nextRate < 0 || nextRate > 100) {
+        toast("確率は0〜100％で入力してください");
+        return;
+      }
+      const otherTotal = rewardDropTotal() - rate;
+      if (otherTotal + nextRate > 100.00001) {
+        toast(`確率の合計は100％以下にしてください（残り${Math.max(0, 100 - otherTotal).toFixed(1)}％）`);
+        input.value = String(rate);
+        return;
+      }
+      reward.dropRate = Math.round(nextRate * 10) / 10;
+      save();
+      renderRewardManage();
+      toast("ドロップ率を保存しました");
+    });
 
     item.querySelector(".use").addEventListener("click", () => {
       if (data.progress.totalStars < reward.cost) {
@@ -1609,12 +1673,7 @@ function renderRewardManage() {
       }
 
       data.progress.totalStars -= reward.cost;
-      data.rewards.earned.push({
-        id: `e${Date.now()}`,
-        rewardId: reward.id,
-        used: false,
-        date: new Date().toISOString()
-      });
+      createEarnedReward(reward, "stars");
       save();
       renderRewardManage();
       toast("ごほうびを獲得しました");
@@ -1622,6 +1681,11 @@ function renderRewardManage() {
 
     item.querySelector(".delete").addEventListener("click", () => {
       if (!window.confirm("このごほうびを削除しますか？")) return;
+      data.rewards.earned.forEach(earnedReward => {
+        if (earnedReward.rewardId !== reward.id) return;
+        earnedReward.rewardName = earnedReward.rewardName || reward.name;
+        earnedReward.rewardIcon = earnedReward.rewardIcon || reward.icon;
+      });
       data.rewards.catalog = data.rewards.catalog.filter(itemValue => itemValue.id !== reward.id);
       save();
       renderRewardManage();
@@ -1629,6 +1693,12 @@ function renderRewardManage() {
 
     box.appendChild(item);
   });
+
+  const total = rewardDropTotal();
+  const summary = document.createElement("div");
+  summary.className = "drop-summary";
+  summary.innerHTML = `<b>交換券 合計 ${total.toFixed(1)}％</b><span>通常シール ${(100 - total).toFixed(1)}％</span>`;
+  box.prepend(summary);
 
   const unused = (data.rewards.earned || []).filter(item => !item.used);
   if (!unused.length) return;
@@ -1638,14 +1708,17 @@ function renderRewardManage() {
   box.appendChild(heading);
 
   unused.forEach(earnedReward => {
-    const reward = data.rewards.catalog.find(item => item.id === earnedReward.rewardId);
-    if (!reward) return;
+    const reward = data.rewards.catalog.find(item => item.id === earnedReward.rewardId) || {
+      icon: earnedReward.rewardIcon || "🎁",
+      name: earnedReward.rewardName || "削除済みのごほうび"
+    };
 
     const row = document.createElement("div");
     row.className = "reward-row";
     row.innerHTML = `<span class="reward-icon">${escapeHTML(reward.icon)}</span><b>${escapeHTML(reward.name)}</b><button class="mini-btn use">使用済みにする</button>`;
     row.querySelector("button").addEventListener("click", () => {
       earnedReward.used = true;
+      earnedReward.usedAt = new Date().toISOString();
       save();
       renderRewardManage();
     });
@@ -1989,8 +2062,19 @@ $("addReward").addEventListener("click", () => {
     return;
   }
 
-  data.rewards.catalog.push({ id: `r${Date.now()}`, icon, name, cost: 20 });
+  const rate = Number($("rewardRateInput").value || 0);
+  if (!Number.isFinite(rate) || rate < 0 || rate > 100) {
+    toast("確率は0〜100％で入力してください");
+    return;
+  }
+  if (rewardDropTotal() + rate > 100.00001) {
+    toast("ごほうび確率の合計は100％以下にしてください");
+    return;
+  }
+
+  data.rewards.catalog.push({ id: `r${Date.now()}`, icon, name, cost: 20, dropRate: Math.round(rate * 10) / 10 });
   $("rewardNameInput").value = "";
+  $("rewardRateInput").value = "0";
   save();
   renderRewardManage();
 });

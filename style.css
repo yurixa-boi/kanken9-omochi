@@ -47,7 +47,8 @@ button,input,select{font:inherit} button{touch-action:manipulation;-webkit-tap-h
 .collection{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}.collect-item{padding:10px;border-radius:16px;text-align:center;background:#eee;color:#999;min-height:105px}.collect-item.got{background:#fff8d9;color:#4d4123;border:2px solid #e5c45f}.collect-item .emoji{font-size:31px;display:block}
 .daily-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:5px;margin:13px 0}.daily-day{padding:8px 2px;border-radius:12px;background:#eee;text-align:center;font-size:11px;font-weight:900}.daily-day.got{background:#dff4e8;color:#34735a}.daily-day.today{outline:3px solid #f0b64f;background:#fff1bd}
 .reward-row{display:grid;grid-template-columns:42px 1fr auto;gap:9px;align-items:center;padding:11px;border:1px solid var(--line);border-radius:16px;background:#fbfaf7}.reward-icon{font-size:27px}.reward-row.used{opacity:.48}.mini-btn{border:0;border-radius:12px;padding:9px 10px;font-weight:900;background:#e5f3ec;color:#36745b}.mini-btn.use{background:#fff0c8;color:#765717}.mini-btn.delete{background:#ffeded;color:#a44}
-.reward-form{display:grid;grid-template-columns:56px 1fr auto;gap:7px}.reward-form input{min-width:0;padding:11px;border:2px solid #ddd;border-radius:13px}.reward-wallet{display:grid;gap:8px}
+.reward-form{display:grid;grid-template-columns:56px minmax(0,1fr) 92px auto;gap:7px}.reward-form input{min-width:0;padding:11px;border:2px solid #ddd;border-radius:13px}.reward-wallet{display:grid;gap:8px}
+.reward-rate-input,.drop-rate-row{display:flex;align-items:center;gap:5px;font-weight:850}.reward-rate-input input{width:68px}.drop-rate-row{justify-content:flex-end;margin:9px 0;color:var(--muted);font-size:12px}.drop-rate-row input{width:76px;padding:7px;border:1px solid var(--line);border-radius:10px;font-size:16px}.drop-summary{display:flex;justify-content:space-between;gap:8px;margin-bottom:9px;padding:10px 12px;border-radius:13px;background:#fff4c9;font-size:12px}.rarity.reward-ticket{background:#fff0b5;color:#795400}
 .login-badge{position:absolute;right:9px;top:9px;background:#fff;border-radius:15px;padding:8px 10px;font-weight:950;box-shadow:0 5px 14px #0002}
 .glow{animation:glow 1s infinite alternate}@keyframes glow{to{filter:drop-shadow(0 0 18px #fff) drop-shadow(0 0 25px #ffd95c);transform:scale(1.06)}}
 @media(max-width:500px){.collection{grid-template-columns:repeat(2,1fr)}.daily-grid{gap:3px}.daily-day{font-size:9px;padding:7px 1px}}
@@ -170,7 +171,7 @@ button,input,select{font:inherit} button{touch-action:manipulation;-webkit-tap-h
   .stats{gap:6px}.stat{padding:9px 3px;font-size:12px}.stat strong{font-size:18px}
   .question{padding:13px}.qmain{font-size:34px}.qmain.sentence{font-size:20px}.choice{min-height:50px;padding:11px;font-size:17px}.feedback{font-size:14px}
   .dialog{padding:17px}.dialog .mascot{width:100px}.key{height:52px}
-  .reward-form{grid-template-columns:52px minmax(0,1fr)}.reward-form .mini-btn{grid-column:1/-1}
+  .reward-form{grid-template-columns:52px minmax(0,1fr) 82px}.reward-form .mini-btn{grid-column:1/-1}.reward-rate-input input{width:57px;padding-inline:7px}
   .data-actions{grid-template-columns:1fr}.data-actions>*:last-child{grid-column:auto}
   .format-stats{grid-template-columns:repeat(2,1fr)}.format-stat:last-child{grid-column:1/-1}
   .search-input,.reward-form input,.name-input{font-size:16px}
