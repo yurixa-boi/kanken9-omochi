@@ -792,6 +792,8 @@ function startStudy(day, customQuestions) {
   questions = prepareQuestionsForSession(shuffledCopy(questions));
 
   session = {
+    id: `study-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    mode: customQuestions ? "review" : "regular",
     day: safeDay,
     questions,
     index: 0,
@@ -1044,6 +1046,16 @@ function finishStudy() {
     data.progress.lastStudyDate = today;
   }
 
+  session.oceanResult = window.OceanAdventureUI
+    ? window.OceanAdventureUI.applyStudyResult({
+      sessionId: session.id,
+      mode: session.mode,
+      correct: session.correct,
+      total: session.questions.length,
+      maxCombo: session.maxCombo
+    })
+    : null;
+
   save();
   renderResult();
   show("result");
@@ -1078,6 +1090,10 @@ function renderResult() {
     : accuracy >= 80
       ? "とてもよくできました！"
       : "まちがいは成長のたねだよ！";
+
+  if (window.OceanAdventureUI) {
+    window.OceanAdventureUI.renderStudyOutcome(session.oceanResult);
+  }
 
   const wrongList = $("wrongList");
   wrongList.innerHTML = session.wrong.length

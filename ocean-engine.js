@@ -93,6 +93,7 @@
       clearedNodeIds: [],
       bosses: createBossState(),
       currency: { shells: 0 },
+      study: { appliedSessionIds: [] },
       meta: { createdAt, updatedAt: createdAt }
     };
   }
@@ -144,6 +145,11 @@
       clearedNodeIds: uniqueKnown(candidate.clearedNodeIds, nodeIds),
       bosses,
       currency: { shells: Math.max(0, Math.floor(Number(candidate.currency && candidate.currency.shells) || 0)) },
+      study: {
+        appliedSessionIds: Array.isArray(candidate.study && candidate.study.appliedSessionIds)
+          ? [...new Set(candidate.study.appliedSessionIds.filter(value => typeof value === "string"))].slice(-200)
+          : []
+      },
       meta: {
         createdAt: candidate.meta && typeof candidate.meta.createdAt === "string"
           ? candidate.meta.createdAt

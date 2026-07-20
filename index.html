@@ -24,14 +24,24 @@
 <div class="menu-grid"><button class="menu" id="mapBtn"><span>🗺️</span><b>ぼうけんマップ</b><small>おもち先生の現在地</small></button><button class="menu" id="stickerBtn"><span>⭐</span><b>シール帳</b><small>宝箱のシールを集めよう</small></button><button class="menu" id="gachaBtn"><span>🎰</span><b>おもちガチャ</b><small>ガチャ券でコレクション</small></button><button class="menu" id="rewardBtn"><span>🎁</span><b>ごほうび</b><small>獲得したごほうびを見る</small></button><button class="menu" id="parentBtn"><span>👨‍👩‍👦</span><b>保護者ページ</b><small>学習状況・暗証番号</small></button><button class="menu" id="dressBtn"><span>👒</span><b>着せ替え</b><small>ガチャアイテムを装備</small></button>
 <button class="menu" id="dictBtn"><span>📖</span><b>漢字図鑑</b><small>成績・ミスノートと連携</small></button>
 <button class="menu" id="practiceBtn"><span>✏️</span><b>手書きプリント</b><small>今日と苦手な漢字を印刷</small></button>
+<button class="menu ocean-menu" id="oceanBtn"><span>⛵</span><b>海の大ぼうけん</b><small>海域を進んでボスに挑戦</small></button>
 <button class="menu" id="settingsBtn2"><span>⚙️</span><b>設定</b><small>名前と表示</small></button></div>
 </section>
 
 <section id="study" class="screen"><button class="back" id="studyBack">← ホームへ</button><div class="study-head"><div><div class="title" style="margin:0">今日の学習</div><small><span id="studyDay">Day 1</span>・<span id="qCounter">1 / 10</span></small></div><b>⭐ <span id="sessionStars">0</span></b></div><div class="study-progress"><span id="studyBar"></span></div><div class="combo" id="combo"></div><div class="card question"><div class="qtype" id="qtype">読み</div><div class="qprompt" id="qprompt"></div><div class="qmain" id="qmain"></div><div class="choices" id="choices"></div><div class="feedback" id="feedback" aria-live="polite"></div><br><button class="primary hidden next-question-btn" id="nextBtn">つぎへ</button></div></section>
 
-<section id="result" class="screen"><button class="back" id="resultBack">← ホームへ</button><div class="card"><div class="title" style="text-align:center">今日の結果</div><div class="result-stars" id="resultStars"></div><div class="result-score"><span id="correctNum">0</span> / <span id="totalNum">10</span></div><div class="notice" id="resultMsg"></div><br><button class="secondary" id="retryBtn">まちがいだけ復習</button><br><br><button class="primary" id="resultHome">ホームへ戻る</button></div><div class="card"><div class="title">今回のまちがい</div><div class="list" id="wrongList"></div></div></section>
+<section id="result" class="screen"><button class="back" id="resultBack">← ホームへ</button><div class="card"><div class="title" style="text-align:center">今日の結果</div><div class="result-stars" id="resultStars"></div><div class="result-score"><span id="correctNum">0</span> / <span id="totalNum">10</span></div><div class="notice" id="resultMsg"></div><div class="ocean-study-result hidden" id="oceanStudyResult"><span id="oceanStudyIcon">⛵</span><div><b id="oceanStudyTitle"></b><small id="oceanStudyText"></small></div></div><br><button class="secondary" id="retryBtn">まちがいだけ復習</button><br><br><button class="primary" id="resultHome">ホームへ戻る</button></div><div class="card"><div class="title">今回のまちがい</div><div class="list" id="wrongList"></div></div></section>
 
 <section id="map" class="screen"><button class="back" id="mapBack">← ホームへ</button><div class="card"><div class="title">おもち先生のぼうけんマップ</div><div class="row muted"><span id="mapPlace">はじめの森</span><span id="mapProgress">0 / 20日</span></div></div><div id="mapContainer"></div></section>
+
+<section id="ocean" class="screen"><button class="back" id="oceanBack">← ホームへ</button>
+<div class="card ocean-header"><div><div class="title">海の大ぼうけん</div><p>海域を進んで、待ち受けるボスをたおそう！</p></div><div class="ocean-currency">🐚 <strong id="oceanShells">0</strong></div></div>
+<div id="oceanMap" class="ocean-map" aria-live="polite"></div></section>
+
+<section id="oceanBattle" class="screen"><button class="back" id="oceanBattleBack">← 海域マップへ</button>
+<div class="card ocean-battle-stage"><div class="ocean-battle-area" id="oceanBattleArea"></div><div class="ocean-boss-icon" id="oceanBossIcon">👾</div><h2 id="oceanBossName">海のボス</h2><div class="ocean-hp-label"><span>ボスHP</span><strong id="oceanBossHpText">0 / 0</strong></div><div class="ocean-hp"><span id="oceanBossHpBar"></span></div></div>
+<div class="card ocean-question" id="oceanQuestionCard"><div class="qtype" id="oceanQuestionType"></div><div class="qprompt" id="oceanQuestionPrompt"></div><div class="qmain" id="oceanQuestionMain"></div><div class="choices" id="oceanChoices"></div><div class="feedback" id="oceanFeedback" aria-live="polite"></div><br><button class="primary hidden" id="oceanNextBtn">つぎへ</button></div>
+<div class="card ocean-battle-result hidden" id="oceanBattleResult"><div class="ocean-result-icon" id="oceanResultIcon">⚔️</div><h2 id="oceanResultTitle"></h2><p id="oceanResultText"></p><button class="primary" id="oceanResultBtn">海域マップへ</button></div></section>
 
 <section id="stickers" class="screen"><button class="back" id="stickerBack">← ホームへ</button><div class="card"><div class="title">おもち先生シール帳</div><p class="muted">Day5・10・15・20の宝箱から特別シールが出ます。</p><div class="stickers" id="stickerGrid"></div></div></section>
 
@@ -84,4 +94,5 @@
 <script src="data/k9-course.js?v=2.1.5" defer></script>
 <script src="ocean-engine.js?v=3.0.0-part1" defer></script>
 <script src="app.js?v=2.1.5" defer></script>
+<script src="ocean-ui.js?v=3.0.0-part2" defer></script>
 </body></html>
