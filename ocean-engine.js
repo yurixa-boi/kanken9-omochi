@@ -7,7 +7,7 @@
  * 従来の KANJI9_SAVE_V2 には触れません。
  */
 (function initializeOceanEngine(globalObject) {
-  const ENGINE_VERSION = "3.0.0-part1";
+  const ENGINE_VERSION = "3.0.0-part4";
   const SAVE_SCHEMA_VERSION = 1;
   const STORAGE_KEY = "KANKEN9_OCEAN_V3";
 
@@ -93,6 +93,8 @@
       clearedNodeIds: [],
       bosses: createBossState(),
       currency: { shells: 0 },
+      study: { appliedSessionIds: [] },
+      collection: { ownedIds: [] },
       meta: { createdAt, updatedAt: createdAt }
     };
   }
@@ -144,6 +146,16 @@
       clearedNodeIds: uniqueKnown(candidate.clearedNodeIds, nodeIds),
       bosses,
       currency: { shells: Math.max(0, Math.floor(Number(candidate.currency && candidate.currency.shells) || 0)) },
+      study: {
+        appliedSessionIds: Array.isArray(candidate.study && candidate.study.appliedSessionIds)
+          ? [...new Set(candidate.study.appliedSessionIds.filter(value => typeof value === "string"))].slice(-200)
+          : []
+      },
+      collection: {
+        ownedIds: Array.isArray(candidate.collection && candidate.collection.ownedIds)
+          ? [...new Set(candidate.collection.ownedIds.filter(value => typeof value === "string"))].slice(0, 100)
+          : []
+      },
       meta: {
         createdAt: candidate.meta && typeof candidate.meta.createdAt === "string"
           ? candidate.meta.createdAt

@@ -13,6 +13,8 @@ const initial = OceanEngine.createInitialSave(fixedClock);
 assert.deepStrictEqual(initial.unlockedAreaIds, ["coral-bay"]);
 assert.strictEqual(initial.bosses["boss-crab"].hp, 30);
 assert.strictEqual(initial.currency.shells, 0);
+assert.deepStrictEqual(initial.study.appliedSessionIds, []);
+assert.deepStrictEqual(initial.collection.ownedIds, []);
 
 const nodeCleared = OceanEngine.markNodeCleared(initial, "coral-1", fixedClock);
 assert.deepStrictEqual(nodeCleared.clearedNodeIds, ["coral-1"]);
@@ -50,6 +52,8 @@ assert.deepStrictEqual(migrated.unlockedAreaIds, ["coral-bay", "deep-blue"]);
 assert.strictEqual(migrated.currentAreaId, "deep-blue");
 assert.strictEqual(migrated.currency.shells, 0);
 assert.strictEqual(migrated.bosses["boss-crab"].hp, 30);
+assert.deepStrictEqual(migrated.study.appliedSessionIds, []);
+assert.deepStrictEqual(migrated.collection.ownedIds, []);
 
 const memoryStorage = {
   values: new Map(),

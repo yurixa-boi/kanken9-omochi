@@ -9,7 +9,7 @@
 <meta http-equiv="Expires" content="0">
 <title>おもち先生と学ぶ 漢検9級チャレンジ Ver.2.1.5</title>
 <!-- クエリの版番号を変えることで、更新後も古いCSSが残ることを防ぎます。 -->
-<link rel="stylesheet" href="style.css?v=2.1.5">
+<link rel="stylesheet" href="style.css?v=3.0.0-part4">
 <meta name="description" content="おもち先生と学ぶ、小学2年生向け漢検9級学習ゲーム">
 </head>
 <body>
@@ -24,14 +24,25 @@
 <div class="menu-grid"><button class="menu" id="mapBtn"><span>🗺️</span><b>ぼうけんマップ</b><small>おもち先生の現在地</small></button><button class="menu" id="stickerBtn"><span>⭐</span><b>シール帳</b><small>宝箱のシールを集めよう</small></button><button class="menu" id="gachaBtn"><span>🎰</span><b>おもちガチャ</b><small>ガチャ券でコレクション</small></button><button class="menu" id="rewardBtn"><span>🎁</span><b>ごほうび</b><small>獲得したごほうびを見る</small></button><button class="menu" id="parentBtn"><span>👨‍👩‍👦</span><b>保護者ページ</b><small>学習状況・暗証番号</small></button><button class="menu" id="dressBtn"><span>👒</span><b>着せ替え</b><small>ガチャアイテムを装備</small></button>
 <button class="menu" id="dictBtn"><span>📖</span><b>漢字図鑑</b><small>成績・ミスノートと連携</small></button>
 <button class="menu" id="practiceBtn"><span>✏️</span><b>手書きプリント</b><small>今日と苦手な漢字を印刷</small></button>
+<button class="menu ocean-menu" id="oceanBtn"><span>⛵</span><b>海の大ぼうけん</b><small>海域を進んでボスに挑戦</small></button>
 <button class="menu" id="settingsBtn2"><span>⚙️</span><b>設定</b><small>名前と表示</small></button></div>
 </section>
 
 <section id="study" class="screen"><button class="back" id="studyBack">← ホームへ</button><div class="study-head"><div><div class="title" style="margin:0">今日の学習</div><small><span id="studyDay">Day 1</span>・<span id="qCounter">1 / 10</span></small></div><b>⭐ <span id="sessionStars">0</span></b></div><div class="study-progress"><span id="studyBar"></span></div><div class="combo" id="combo"></div><div class="card question"><div class="qtype" id="qtype">読み</div><div class="qprompt" id="qprompt"></div><div class="qmain" id="qmain"></div><div class="choices" id="choices"></div><div class="feedback" id="feedback" aria-live="polite"></div><br><button class="primary hidden next-question-btn" id="nextBtn">つぎへ</button></div></section>
 
-<section id="result" class="screen"><button class="back" id="resultBack">← ホームへ</button><div class="card"><div class="title" style="text-align:center">今日の結果</div><div class="result-stars" id="resultStars"></div><div class="result-score"><span id="correctNum">0</span> / <span id="totalNum">10</span></div><div class="notice" id="resultMsg"></div><br><button class="secondary" id="retryBtn">まちがいだけ復習</button><br><br><button class="primary" id="resultHome">ホームへ戻る</button></div><div class="card"><div class="title">今回のまちがい</div><div class="list" id="wrongList"></div></div></section>
+<section id="result" class="screen"><button class="back" id="resultBack">← ホームへ</button><div class="card"><div class="title" style="text-align:center">今日の結果</div><div class="result-stars" id="resultStars"></div><div class="result-score"><span id="correctNum">0</span> / <span id="totalNum">10</span></div><div class="notice" id="resultMsg"></div><div class="ocean-study-result hidden" id="oceanStudyResult"><span id="oceanStudyIcon">⛵</span><div><b id="oceanStudyTitle"></b><small id="oceanStudyText"></small></div></div><br><button class="secondary" id="retryBtn">まちがいだけ復習</button><br><br><button class="primary" id="resultHome">ホームへ戻る</button></div><div class="card"><div class="title">今回のまちがい</div><div class="list" id="wrongList"></div></div></section>
 
 <section id="map" class="screen"><button class="back" id="mapBack">← ホームへ</button><div class="card"><div class="title">おもち先生のぼうけんマップ</div><div class="row muted"><span id="mapPlace">はじめの森</span><span id="mapProgress">0 / 20日</span></div></div><div id="mapContainer"></div></section>
+
+<section id="ocean" class="screen"><button class="back" id="oceanBack">← ホームへ</button>
+<div class="card ocean-header"><div><div class="title">海の大ぼうけん</div><p>海域を進んで、待ち受けるボスをたおそう！</p></div><div class="ocean-currency">🐚 <strong id="oceanShells">0</strong></div></div>
+<div id="oceanMap" class="ocean-map" aria-live="polite"></div>
+<div class="card ocean-collection-card"><div class="row"><div class="title">海限定コレクション</div><div class="ocean-currency small">🐚 <strong id="oceanShopShells">0</strong></div></div><p class="muted">ボスからもらった貝で、海だけの宝物を集めよう。</p><div id="oceanCollection" class="ocean-collection"></div></div></section>
+
+<section id="oceanBattle" class="screen"><button class="back" id="oceanBattleBack">← 海域マップへ</button>
+<div class="card ocean-battle-stage"><div class="ocean-battle-area" id="oceanBattleArea"></div><div class="ocean-boss-icon" id="oceanBossIcon">👾</div><h2 id="oceanBossName">海のボス</h2><div class="ocean-hp-label"><span>ボスHP</span><strong id="oceanBossHpText">0 / 0</strong></div><div class="ocean-hp"><span id="oceanBossHpBar"></span></div></div>
+<div class="card ocean-question" id="oceanQuestionCard"><div class="qtype" id="oceanQuestionType"></div><div class="qprompt" id="oceanQuestionPrompt"></div><div class="qmain" id="oceanQuestionMain"></div><div class="choices" id="oceanChoices"></div><div class="feedback" id="oceanFeedback" aria-live="polite"></div><br><button class="primary hidden" id="oceanNextBtn">つぎへ</button></div>
+<div class="card ocean-battle-result hidden" id="oceanBattleResult"><div class="ocean-result-icon" id="oceanResultIcon">⚔️</div><h2 id="oceanResultTitle"></h2><p id="oceanResultText"></p><button class="primary" id="oceanResultBtn">海域マップへ</button></div></section>
 
 <section id="stickers" class="screen"><button class="back" id="stickerBack">← ホームへ</button><div class="card"><div class="title">おもち先生シール帳</div><p class="muted">Day5・10・15・20の宝箱から特別シールが出ます。</p><div class="stickers" id="stickerGrid"></div></div></section>
 
@@ -60,11 +71,12 @@
 <!-- 印刷ページはJavaScriptで4字ずつ作成し、各A4ページに見出しを付けます。 -->
 <div class="print-sheet" id="printSheet" aria-label="A4印刷プレビュー"></div></section>
 <section id="parent" class="screen"><button class="back" id="parentBack">← ホームへ</button><div class="card"><div class="title">保護者ページ</div><div class="stats"><div class="stat">現在<strong>Day <span id="pDay">1</span></strong></div><div class="stat">正解<strong id="pCorrect">0</strong></div><div class="stat">誤答<strong id="pWrong">0</strong></div></div></div><div class="card"><div class="title">問題形式ごとの成績</div><p class="muted">読み・書き取り・使い分け・対になる漢字・漢字の仲間を集計します。</p><div class="format-stats" id="formatStats"></div></div><div class="card"><div class="title">苦手な問題</div><div class="list" id="weakList"></div></div><div class="card"><div class="title">ミスノートの漢字</div><p class="muted">間違いが多い順に表示します。プリントにも自動で追加されます。</p><div class="weak-kanji-list" id="parentWeakKanji"></div></div>
+<div class="card"><div class="title">Ocean進捗</div><div class="ocean-parent-stats"><div><small>現在の海域</small><strong id="parentOceanArea">さんごの入り江</strong></div><div><small>ボス撃破</small><strong id="parentOceanBosses">0 / 4</strong></div><div><small>貝・コレクション</small><strong><span id="parentOceanShells">0</span> 🐚 ／ <span id="parentOceanOwned">0</span>個</strong></div></div><div class="ocean-parent-boss" id="parentOceanBoss"></div></div>
 <div class="card"><div class="title">ごほうび管理</div>
 <p class="muted">実際のごほうびとガチャのドロップ率を設定します。合計100％未満の場合、残りの確率では通常シールが出ます。</p>
 <div class="reward-form"><input id="rewardIconInput" value="🥤" maxlength="2" aria-label="アイコン"><input id="rewardNameInput" placeholder="例：コーラ1本"><label class="reward-rate-input"><input id="rewardRateInput" type="number" min="0" max="100" step="0.1" value="0" inputmode="decimal" aria-label="ドロップ率">%</label><button class="mini-btn" id="addReward">追加</button></div>
 <br><div class="list" id="rewardManage"></div></div>
-<div class="card"><div class="title">学習データの保存・復元</div><p class="muted">進捗・ミスノート・ガチャ・設定をJSONファイルに保存します。iPhoneでは共有画面から「ファイルに保存」を選べます。</p><div class="data-actions"><button class="secondary" id="exportDataBtn">⬇️ データを書き出す</button><button class="ghost" id="importDataBtn">⬆️ ファイルから復元</button><button class="ghost" id="restoreBackupBtn">↩️ 直前のデータへ戻す</button></div><input id="importDataInput" type="file" accept="application/json,.json" hidden><p class="backup-status" id="backupStatus" aria-live="polite"></p></div>
+<div class="card"><div class="title">学習データの保存・復元</div><p class="muted">進捗・ミスノート・ガチャ・Ocean進捗・設定をJSONファイルに保存します。iPhoneでは共有画面から「ファイルに保存」を選べます。</p><div class="data-actions"><button class="secondary" id="exportDataBtn">⬇️ データを書き出す</button><button class="ghost" id="importDataBtn">⬆️ ファイルから復元</button><button class="ghost" id="restoreBackupBtn">↩️ 直前のデータへ戻す</button></div><input id="importDataInput" type="file" accept="application/json,.json" hidden><p class="backup-status" id="backupStatus" aria-live="polite"></p></div>
 <div class="card"><button class="secondary" id="changePin">🔑 暗証番号を変更</button><br><br><button class="danger" id="resetBtn">学習データを初期化</button></div></section>
 
 <section id="settings" class="screen"><button class="back" id="settingsBack">← ホームへ</button><div class="card"><div class="title">設定</div><label for="nameInput">呼びかけ用のお名前</label><input id="nameInput" class="name-input" autocomplete="off"><label for="courseSelect">学習コース</label><select id="courseSelect" class="name-input"></select><p class="muted" id="courseHelp">利用できるコースデータから選択します。</p><button class="primary" id="saveSettings">保存</button><p class="settings-version" id="settingsCourseInfo">アプリ Ver.2.1.5</p></div></section>
@@ -82,6 +94,7 @@
 <!-- JavaScriptも版番号付きURLにして、iPhoneに旧版が残ることを防ぎます。 -->
 <script src="data/course-registry.js?v=2.1.5" defer></script>
 <script src="data/k9-course.js?v=2.1.5" defer></script>
-<script src="ocean-engine.js?v=3.0.0-part1" defer></script>
-<script src="app.js?v=2.1.5" defer></script>
+<script src="ocean-engine.js?v=3.0.0-part4" defer></script>
+<script src="app.js?v=3.0.0-part4" defer></script>
+<script src="ocean-ui.js?v=3.0.0-part4" defer></script>
 </body></html>

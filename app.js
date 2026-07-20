@@ -368,7 +368,8 @@ function createBackupEnvelope(saveData = data, reason = "export") {
     storageKey: STORAGE_KEY,
     reason,
     exportedAt: new Date().toISOString(),
-    data: saveData
+    data: saveData,
+    oceanData: window.OceanAdventureUI ? window.OceanAdventureUI.exportSave() : null
   };
 }
 
@@ -457,6 +458,9 @@ async function importDataFile(file) {
     if (!isValidSaveData(candidate)) throw new Error("invalid-save-data");
     if (!window.confirm("現在のデータを退避して、このファイルの学習データを復元しますか？")) return;
     applyImportedData(candidate, "before-import");
+    if (payload && payload.oceanData && window.OceanAdventureUI) {
+      window.OceanAdventureUI.importSave(payload.oceanData);
+    }
     renderBackupStatus();
     show("home");
     toast("学習データを復元しました");
@@ -500,6 +504,9 @@ function restoreStoredBackup() {
   const current = createBackupEnvelope(data, "before-restore");
   data = merge(defaults(), backup.data);
   migrateData();
+  if (backup.payload && backup.payload.oceanData && window.OceanAdventureUI) {
+    window.OceanAdventureUI.importSave(backup.payload.oceanData);
+  }
   try {
     localStorage.setItem(BACKUP_KEY, JSON.stringify(current));
   } catch (error) {
@@ -507,6 +514,7 @@ function restoreStoredBackup() {
   }
   save();
   renderBackupStatus();
+  if (window.OceanAdventureUI) window.OceanAdventureUI.renderParentProgress();
   show("home");
   toast("直前の学習データへ戻しました");
 }
@@ -792,6 +800,8 @@ function startStudy(day, customQuestions) {
   questions = prepareQuestionsForSession(shuffledCopy(questions));
 
   session = {
+    id: `study-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    mode: customQuestions ? "review" : "regular",
     day: safeDay,
     questions,
     index: 0,
@@ -1044,6 +1054,16 @@ function finishStudy() {
     data.progress.lastStudyDate = today;
   }
 
+  session.oceanResult = window.OceanAdventureUI
+    ? window.OceanAdventureUI.applyStudyResult({
+      sessionId: session.id,
+      mode: session.mode,
+      correct: session.correct,
+      total: session.questions.length,
+      maxCombo: session.maxCombo
+    })
+    : null;
+
   save();
   renderResult();
   show("result");
@@ -1078,6 +1098,10 @@ function renderResult() {
     : accuracy >= 80
       ? "とてもよくできました！"
       : "まちがいは成長のたねだよ！";
+
+  if (window.OceanAdventureUI) {
+    window.OceanAdventureUI.renderStudyOutcome(session.oceanResult);
+  }
 
   const wrongList = $("wrongList");
   wrongList.innerHTML = session.wrong.length
@@ -1824,6 +1848,7 @@ function renderParent() {
   }
 
   renderBackupStatus();
+  if (window.OceanAdventureUI) window.OceanAdventureUI.renderParentProgress();
 }
 
 /* -------------------- ホーム画面 -------------------- */
@@ -2120,6 +2145,7 @@ $("resetBtn").addEventListener("click", () => {
   if (!window.confirm("すべての学習データを初期化しますか？")) return;
   if (!storeCurrentBackup("before-reset")) return;
   data = defaults();
+  if (window.OceanAdventureUI) window.OceanAdventureUI.resetSave();
   save();
   show("home");
 });
