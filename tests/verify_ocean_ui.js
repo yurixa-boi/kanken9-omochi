@@ -10,8 +10,8 @@ const ui = fs.readFileSync(require.resolve("../ocean-ui.js"), "utf8");
 assert.match(html, /id="oceanBtn"/);
 assert.match(html, /id="ocean" class="screen"/);
 assert.match(html, /id="oceanBattle" class="screen"/);
-assert.match(html, /ocean-ui\.js\?v=3\.0\.0-part4/);
-assert.ok(html.indexOf("app.js?v=3.0.0-part4") < html.indexOf("ocean-ui.js?v=3.0.0-part4"));
+assert.match(html, /ocean-ui\.js\?v=3\.0\.0-part5/);
+assert.ok(html.indexOf("app.js?v=3.0.0-part5") < html.indexOf("ocean-ui.js?v=3.0.0-part5"));
 
 [
   "oceanMap", "oceanShells", "oceanBossName", "oceanBossHpBar",
