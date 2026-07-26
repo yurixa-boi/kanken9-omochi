@@ -7,7 +7,7 @@
  * 従来の KANJI9_SAVE_V2 には触れません。
  */
 (function initializeOceanEngine(globalObject) {
-  const ENGINE_VERSION = "3.0.0-part4";
+  const ENGINE_VERSION = "3.0.0-part5";
   const SAVE_SCHEMA_VERSION = 1;
   const STORAGE_KEY = "KANKEN9_OCEAN_V3";
 

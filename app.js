@@ -1,7 +1,7 @@
-"use strict";
+﻿"use strict";
 
 /*
- * おもち先生と学ぶ 漢検9級チャレンジ
+ * おもちと学ぶ 漢検9級チャレンジ
  * Ver.2.1.5
  *
  * このファイルでは、学習・復習・ガチャなどの既存機能に加えて、
@@ -15,7 +15,7 @@
  * merge()で補うため、これまでの進捗やガチャデータを残したまま使えます。
  */
 
-const APP_VERSION = "2.1.5";
+const APP_VERSION = "3.0.0";
 const BACKUP_FORMAT_VERSION = 1;
 const UPDATE_CHECK_INTERVAL = 60 * 1000;
 
@@ -101,7 +101,7 @@ const STICKER_CATALOG = [
   { id: "area15", icon: "🏘️", name: "青空の町シール" },
   { id: "area20", icon: "🌊", name: "海辺の宝箱シール" },
   { id: "bonus1", icon: "⭐", name: "がんばり星" },
-  { id: "bonus2", icon: "📚", name: "読書のおもち先生" }
+  { id: "bonus2", icon: "📚", name: "読書のおもち" }
 ];
 
 const GACHA_ITEMS = [
@@ -154,6 +154,7 @@ function defaults() {
     review: { queue: [], history: {}, weakIds: [] },
     stickers: { owned: [] },
     gacha: { tickets: 0, owned: [], history: [] },
+    cardGachaTickets: 0,
     daily: { lastLogin: "", loginStreak: 0, totalDays: 0 },
     rewards: {
       catalog: [
@@ -225,7 +226,16 @@ function isVersionBefore(version, target) {
 function load() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "null");
-    return merge(defaults(), saved);
+    const merged = merge(defaults(), saved);
+    const oceanTickets = Number(saved && saved.cardGachaTickets);
+    const legacyTickets = Number(saved && saved.gacha && saved.gacha.tickets);
+    const ticketCount = Math.max(
+      Number.isFinite(oceanTickets) ? oceanTickets : 0,
+      Number.isFinite(legacyTickets) ? legacyTickets : 0,
+    );
+    merged.cardGachaTickets = Math.max(0, Math.floor(ticketCount || 0));
+    merged.gacha.tickets = merged.cardGachaTickets;
+    return merged;
   } catch (error) {
     return defaults();
   }
@@ -349,6 +359,8 @@ function migrateData() {
 }
 
 function save() {
+  data.cardGachaTickets = Math.max(0, Math.floor(Number(data.cardGachaTickets) || 0));
+  data.gacha.tickets = data.cardGachaTickets;
   data.meta.updatedAt = new Date().toISOString();
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
@@ -1024,7 +1036,7 @@ function finishStudy() {
   });
 
   data.progress.totalStars += session.stars;
-  data.gacha.tickets = (data.gacha.tickets || 0) + 1;
+  data.cardGachaTickets = (data.cardGachaTickets || 0) + 1;
 
   /* 正解1問につき10EXP、学習完了ボーナスとして20EXPを加えます。 */
   const previousLevel = getLevel();
@@ -1054,15 +1066,11 @@ function finishStudy() {
     data.progress.lastStudyDate = today;
   }
 
-  session.oceanResult = window.OceanAdventureUI
-    ? window.OceanAdventureUI.applyStudyResult({
-      sessionId: session.id,
-      mode: session.mode,
-      correct: session.correct,
-      total: session.questions.length,
-      maxCombo: session.maxCombo
-    })
-    : null;
+  session.oceanResult = {
+    outcome: "advance",
+    title: "Ocean Adventureが1マス進みます",
+    text: "ガチャ券を1枚獲得しました。下のボタンから冒険へ進もう！"
+  };
 
   save();
   renderResult();
@@ -1099,8 +1107,14 @@ function renderResult() {
       ? "とてもよくできました！"
       : "まちがいは成長のたねだよ！";
 
-  if (window.OceanAdventureUI) {
-    window.OceanAdventureUI.renderStudyOutcome(session.oceanResult);
+  const oceanStudyResult = $("oceanStudyResult");
+  if (oceanStudyResult && session.mode === "regular") {
+    oceanStudyResult.classList.remove("hidden");
+    oceanStudyResult.dataset.outcome = "advance";
+    $("oceanStudyIcon").textContent = "🌊";
+    $("oceanStudyTitle").textContent = "Ocean Adventureが1マス進みます";
+    $("oceanStudyText").textContent =
+      "ガチャ券を1枚獲得しました。下のボタンから冒険へ進もう！";
   }
 
   const wrongList = $("wrongList");
@@ -1155,7 +1169,7 @@ function renderMap() {
       const content = completed.has(day)
         ? "✓"
         : day === currentDay
-          ? `<img src="${MASCOT}" alt="おもち先生">`
+          ? `<img src="${MASCOT}" alt="おもち">`
           : "🔒";
 
       node.innerHTML = `<div class="step">${content}</div><small>Day ${day}</small>`;
@@ -1578,7 +1592,7 @@ function renderPractice() {
         <div class="print-meta"><span>日づけ：<b>${printDate}</b></span><span>なまえ：</span></div>
       </div>
       <div class="print-kanji-list"></div>
-      <footer><span>おもち先生と学ぶ　${escapeHTML(ACTIVE_COURSE.name)}チャレンジ</span><span>${pageIndex + 1} / ${pageCount}</span></footer>
+      <footer><span>おもちと学ぶ　${escapeHTML(ACTIVE_COURSE.name)}チャレンジ</span><span>${pageIndex + 1} / ${pageCount}</span></footer>
     `;
 
     const printList = page.querySelector(".print-kanji-list");
@@ -1767,7 +1781,7 @@ function handleDailyLogin() {
   const loginDay = data.daily.loginStreak;
   const rewardStars = loginDay === 7 ? 10 : loginDay;
   data.progress.totalStars += rewardStars;
-  if (loginDay === 7) data.gacha.tickets += 1;
+  if (loginDay === 7) data.cardGachaTickets = (data.cardGachaTickets || 0) + 1;
   save();
 
   const grid = $("dailyGrid");
@@ -1876,7 +1890,7 @@ function renderAll() {
   const level = getLevel();
   const levelProgress = getLevelProgress();
 
-  document.title = `おもち先生と学ぶ ${ACTIVE_COURSE.name}チャレンジ Ver.${APP_VERSION}`;
+  document.title = `おもちと学ぶ ${ACTIVE_COURSE.name}チャレンジ Ver.${APP_VERSION}`;
   $("brandCourseName").textContent = ACTIVE_COURSE.name;
   $("settingsCourseInfo").textContent = `アプリ Ver.${APP_VERSION}／コースデータ ${ACTIVE_COURSE_ID}`;
   renderCourseSelector();
@@ -1884,7 +1898,7 @@ function renderAll() {
   $("homeDay").textContent = String(data.progress.currentDay);
   $("homeBar").style.width = `${coursePercent}%`;
   $("homePct").textContent = `${coursePercent}%`;
-  $("leftDays").textContent = `あと${Math.max(0, COURSE_DAYS - completedCount)}日`;
+  $("leftDays").textContent = `学習 あと${Math.max(0, COURSE_DAYS - completedCount)}日`;
   $("stars").textContent = String(data.progress.totalStars);
   $("streak").textContent = `${data.progress.streak}日`;
   $("accuracy").textContent = totalAnswers
@@ -1892,7 +1906,7 @@ function renderAll() {
     : "--";
   $("nameInput").value = data.profile.name || "";
   $("greeting").textContent = `${data.profile.name ? `${data.profile.name}さん、` : ""}今日もいっしょにがんばろう！`;
-  $("homeTickets").textContent = String(data.gacha.tickets || 0);
+  $("homeTickets").textContent = String(data.cardGachaTickets || 0);
   $("homeLevel").textContent = String(level);
   $("homeExpBar").style.width = `${levelProgress}%`;
   $("homeExpText").textContent = `次のレベルまで${100 - levelProgress}EXP`;
@@ -2026,15 +2040,25 @@ $("startBtn").addEventListener("click", () => startStudy(data.progress.currentDa
 $("nextBtn").addEventListener("click", goToNextQuestion);
 $("studyBack").addEventListener("click", leaveStudy);
 $("resultBack").addEventListener("click", () => show("home"));
-$("resultHome").addEventListener("click", () => show("home"));
+$("resultHome").addEventListener("click", () => {
+  if (session && session.finished && session.mode === "regular") {
+    location.href = `ocean-adventure/ocean-adventure.html?advance=${encodeURIComponent(session.id)}`;
+    return;
+  }
+  show("home");
+});
 $("retryBtn").addEventListener("click", () => startStudy(session.day, session.wrong));
 
-$("mapBtn").addEventListener("click", () => show("map"));
+$("mapBtn")?.addEventListener("click", () => {
+  location.href = "ocean-adventure/ocean-adventure.html";
+});
 $("mapBack").addEventListener("click", () => show("home"));
 $("stickerBtn").addEventListener("click", () => show("stickers"));
 $("stickerBack").addEventListener("click", () => show("home"));
 
-$("gachaBtn").addEventListener("click", () => show("gacha"));
+$("gachaBtn").addEventListener("click", () => {
+  location.href = "ocean-adventure/gacha.html";
+});
 $("gachaBack").addEventListener("click", () => show("home"));
 $("drawGacha").addEventListener("click", drawGacha);
 $("gachaClose").addEventListener("click", () => {
@@ -2115,7 +2139,7 @@ $("importDataBtn").addEventListener("click", () => $("importDataInput").click())
 $("importDataInput").addEventListener("change", event => importDataFile(event.target.files[0]));
 $("restoreBackupBtn").addEventListener("click", restoreStoredBackup);
 
-$("settingsBtn").addEventListener("click", () => show("settings"));
+$("settingsBtn")?.addEventListener("click", () => show("settings"));
 $("settingsBtn2").addEventListener("click", () => show("settings"));
 $("settingsBack").addEventListener("click", () => show("home"));
 $("saveSettings").addEventListener("click", () => {
@@ -2150,13 +2174,13 @@ $("resetBtn").addEventListener("click", () => {
   show("home");
 });
 
-/* おもち先生をタップすると、装備を保ったまま喜ぶ動きをします。 */
+/* おもちをタップすると、装備を保ったまま喜ぶ動きをします。 */
 $("homeFaceWrap").addEventListener("click", () => {
   $("homeFaceWrap").classList.remove("mascot-tap");
   void $("homeFaceWrap").offsetWidth;
   $("homeFaceWrap").classList.add("mascot-tap");
   setMood("happy");
-  toast("おもち先生もうれしそう！");
+  toast("おもちもうれしそう！");
   setTimeout(() => $("homeFaceWrap").classList.remove("mascot-tap"), 650);
 });
 

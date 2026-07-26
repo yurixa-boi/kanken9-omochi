@@ -30,6 +30,7 @@
 
   let oceanSave = engine.load(localStorage);
   let battle = null;
+  let celebrationReturnFocus = null;
 
   function element(id) {
     return document.getElementById(id);
@@ -38,6 +39,29 @@
   function persist(nextSave) {
     oceanSave = engine.save(localStorage, nextSave);
     return oceanSave;
+  }
+
+  function showOceanCelebration({ icon, label, title, text, returnFocus }) {
+    const modal = element("oceanCelebration");
+    if (!modal) return;
+    celebrationReturnFocus = returnFocus || document.activeElement;
+    element("oceanCelebrationIcon").textContent = icon;
+    element("oceanCelebrationLabel").textContent = label;
+    element("oceanCelebrationTitle").textContent = title;
+    element("oceanCelebrationText").textContent = text;
+    modal.classList.add("show");
+    document.body.classList.add("modal-open");
+    element("oceanCelebrationClose").focus();
+    if (typeof burst === "function") burst(55);
+  }
+
+  function closeOceanCelebration() {
+    const modal = element("oceanCelebration");
+    if (!modal || !modal.classList.contains("show")) return;
+    modal.classList.remove("show");
+    document.body.classList.remove("modal-open");
+    if (celebrationReturnFocus && document.contains(celebrationReturnFocus)) celebrationReturnFocus.focus();
+    celebrationReturnFocus = null;
   }
 
   function exportSave() {
@@ -101,7 +125,8 @@
           type: "boss-defeated",
           icon: "🏆",
           title: `${boss.name}をたおした！`,
-          text: `${damage}ダメージ！ 🐚${boss.reward.shells}個を獲得し、次の海域が開きました。`
+          text: `${damage}ダメージ！ 🐚${boss.reward.shells}個を獲得し、次の海域が開きました。`,
+          celebration: true
         }
         : {
           type: "boss-damage",
@@ -128,6 +153,17 @@
     element("oceanStudyTitle").textContent = outcome.title;
     element("oceanStudyText").textContent = outcome.text;
     panel.dataset.outcome = outcome.type;
+    if (outcome.celebration) {
+      outcome.celebration = false;
+      const area = currentOceanArea();
+      showOceanCelebration({
+        icon: "🏆",
+        label: "ボス撃破！",
+        title: outcome.title,
+        text: `${outcome.text} 次は「${area.name}」へ進もう！`,
+        returnFocus: panel
+      });
+    }
   }
 
   function isAreaUnlocked(areaId) {
@@ -170,11 +206,13 @@
       const bossAvailable = unlocked && isBossAvailable(area);
       const card = document.createElement("article");
       card.className = `ocean-area ocean-theme-${AREA_THEMES[area.id]}${unlocked ? "" : " ocean-locked"}`;
+      card.setAttribute("aria-label", `${area.name}、航海 ${progress} / 3${unlocked ? "" : "、未解放"}`);
 
       const nodes = regularNodes(area).map((nodeId, index) => {
         const cleared = oceanSave.clearedNodeIds.includes(nodeId);
         const active = unlocked && nodeId === nextNode;
-        return `<div class="ocean-node${cleared ? " cleared" : active ? " active" : " locked"}"><span>${cleared ? "✓" : active ? "⛵" : "🔒"}</span><small>${index + 1}</small></div>`;
+        const stateLabel = cleared ? "クリア済み" : active ? "現在地" : "未到達";
+        return `<div class="ocean-node${cleared ? " cleared" : active ? " active" : " locked"}" aria-label="航海ポイント ${index + 1}、${stateLabel}"><span aria-hidden="true">${cleared ? "✓" : active ? "⛵" : "🔒"}</span><small>${index + 1}</small></div>`;
       }).join("<i class='ocean-route-line'></i>");
 
       const action = !unlocked
@@ -185,7 +223,7 @@
             ? `<button class="ocean-action sail" data-ocean-node="${nextNode}">⛵ 航海する（${progress + 1} / 3）</button>`
             : `<button class="ocean-action boss" data-ocean-boss="${boss.id}"${bossAvailable ? "" : " disabled"}>⚔️ ${escapeHTML(boss.name)}に挑戦</button>`;
 
-      card.innerHTML = `<div class="ocean-area-heading"><span class="ocean-area-icon">${area.icon}</span><div><small>AREA ${area.order}</small><h2>${escapeHTML(area.name)}</h2></div><span class="ocean-area-progress">${progress}/3</span></div><div class="ocean-route">${nodes}<div class="ocean-node boss-node${bossState.defeated ? " cleared" : bossAvailable ? " active" : " locked"}"><span>${bossState.defeated ? "🏆" : BOSS_ICONS[boss.id]}</span><small>BOSS</small></div></div>${action}`;
+      card.innerHTML = `<div class="ocean-area-heading"><span class="ocean-area-icon" aria-hidden="true">${area.icon}</span><div><small>AREA ${area.order}</small><h2>${escapeHTML(area.name)}</h2></div><span class="ocean-area-progress" aria-label="航海 ${progress} / 3">${progress}/3</span></div><div class="ocean-route">${nodes}<div class="ocean-node boss-node${bossState.defeated ? " cleared" : bossAvailable ? " active" : " locked"}" aria-label="${escapeHTML(boss.name)}、${bossState.defeated ? "撃破済み" : bossAvailable ? "挑戦可能" : "未到達"}"><span aria-hidden="true">${bossState.defeated ? "🏆" : BOSS_ICONS[boss.id]}</span><small>BOSS</small></div></div>${action}`;
       container.appendChild(card);
     });
 
@@ -210,7 +248,8 @@
       const canBuy = oceanSave.currency.shells >= item.cost;
       const card = document.createElement("div");
       card.className = `ocean-collect-item${owned ? " owned" : ""}`;
-      card.innerHTML = `<span>${item.icon}</span><b>${escapeHTML(item.name)}</b><small>${owned ? "獲得済み" : `🐚 ${item.cost}個`}</small><button class="mini-btn" data-ocean-item="${item.id}"${owned || !canBuy ? " disabled" : ""}>${owned ? "コレクション済み" : canBuy ? "交換する" : "貝が足りません"}</button>`;
+      card.tabIndex = -1;
+      card.innerHTML = `<span aria-hidden="true">${item.icon}</span><b>${escapeHTML(item.name)}</b><small>${owned ? "獲得済み" : `🐚 ${item.cost}個`}</small><button class="mini-btn" data-ocean-item="${item.id}" aria-label="${escapeHTML(item.name)}、${owned ? "獲得済み" : `${item.cost}個の貝で交換`}"${owned || !canBuy ? " disabled" : ""}>${owned ? "コレクション済み" : canBuy ? "交換する" : "貝が足りません"}</button>`;
       container.appendChild(card);
     });
     container.querySelectorAll("[data-ocean-item]").forEach(button => {
@@ -231,7 +270,14 @@
     oceanSave.collection.ownedIds.push(item.id);
     persist(oceanSave);
     renderOceanMap();
-    if (typeof toast === "function") toast(`${item.name}を獲得しました！`);
+    const acquiredCard = document.querySelector(`[data-ocean-item="${item.id}"]`).closest(".ocean-collect-item");
+    showOceanCelebration({
+      icon: item.icon,
+      label: "コレクション獲得！",
+      title: item.name,
+      text: `海限定の宝物を手に入れました。残りの貝は${oceanSave.currency.shells}個です。`,
+      returnFocus: acquiredCard
+    });
     return true;
   }
 
@@ -302,6 +348,8 @@
     element("oceanBossName").textContent = battle.boss.name;
     element("oceanBossHpText").textContent = `${state.hp} / ${battle.boss.maxHp}`;
     element("oceanBossHpBar").style.width = `${hpPercent}%`;
+    element("oceanBossHp").setAttribute("aria-valuemax", String(battle.boss.maxHp));
+    element("oceanBossHp").setAttribute("aria-valuenow", String(state.hp));
   }
 
   function renderBossQuestion() {
@@ -348,6 +396,7 @@
       const previewHp = Math.max(0, bossState.hp - battle.correct * DAMAGE_PER_CORRECT);
       element("oceanBossHpText").textContent = `${previewHp} / ${battle.boss.maxHp}`;
       element("oceanBossHpBar").style.width = `${Math.round(previewHp / battle.boss.maxHp * 100)}%`;
+      element("oceanBossHp").setAttribute("aria-valuenow", String(previewHp));
       element("oceanBossIcon").classList.add("boss-hit");
       setTimeout(() => element("oceanBossIcon").classList.remove("boss-hit"), 450);
     } else {
@@ -379,7 +428,18 @@
       ? `🐚${battle.boss.reward.shells}個を獲得！ 次の海域が開きました。`
       : `正解 ${battle.correct} / ${battle.questions.length}。ボスの残りHPは${state.hp}です。`;
     element("oceanResultBtn").textContent = state.defeated ? "次の海域を見る" : "海域マップへ戻る";
-    if (state.defeated && typeof burst === "function") burst(60);
+    if (state.defeated) {
+      const nextArea = engine.areas.find(area => area.requiredAreaId === battle.area.id);
+      showOceanCelebration({
+        icon: "🏆",
+        label: "ボス撃破！",
+        title: `${battle.boss.name}をたおした！`,
+        text: nextArea
+          ? `貝を${battle.boss.reward.shells}個獲得し、「${nextArea.name}」が開きました！`
+          : `貝を${battle.boss.reward.shells}個獲得し、すべての海域を制覇しました！`,
+        returnFocus: element("oceanResultBtn")
+      });
+    }
   }
 
   function leaveBossBattle() {
@@ -387,11 +447,24 @@
     showOceanMap();
   }
 
-  element("oceanBtn").addEventListener("click", showOceanMap);
+  element("oceanBtn").addEventListener("click", () => {
+    location.href = "ocean-adventure/ocean-adventure.html";
+  });
   element("oceanBack").addEventListener("click", () => show("home"));
   element("oceanBattleBack").addEventListener("click", leaveBossBattle);
   element("oceanNextBtn").addEventListener("click", nextBossQuestion);
   element("oceanResultBtn").addEventListener("click", leaveBossBattle);
+  element("oceanCelebrationClose").addEventListener("click", closeOceanCelebration);
+  element("oceanCelebration").addEventListener("click", event => {
+    if (event.target === element("oceanCelebration")) closeOceanCelebration();
+  });
+  document.addEventListener("keydown", event => {
+    if (event.key === "Escape") closeOceanCelebration();
+    if (event.key === "Tab" && element("oceanCelebration").classList.contains("show")) {
+      event.preventDefault();
+      element("oceanCelebrationClose").focus();
+    }
+  });
 
   globalObject.OceanAdventureUI = Object.freeze({
     renderOceanMap,
@@ -406,6 +479,7 @@
     exportSave,
     importSave,
     resetSave,
+    showOceanCelebration,
     getSave: () => JSON.parse(JSON.stringify(oceanSave))
   });
 })(typeof globalThis !== "undefined" ? globalThis : window);
